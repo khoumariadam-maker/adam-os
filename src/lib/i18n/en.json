@@ -1,0 +1,101 @@
+{
+  "boot": {
+    "title": "ADAM OS v1.0 — © 2026 KHOUMARI ADAM",
+    "bios": "BIOS PhoenixSpider ROM v2.4 (Rev 8-bit)",
+    "memCheck": "Memory check........... 128MB OK",
+    "hardware": "Detecting hardware..... ESP32 / RPi 4B / GPT-ON",
+    "kernel": "Loading kernel......... OK",
+    "mount": "Mounting /home/adam.... OK",
+    "mascot": "Starting Pixel Spider.. OK",
+    "booting": "> booting GUI_",
+    "skip": "TAP TO SKIP",
+    "welcome": "Hey there! I'm Pixel Spider. Welcome to Adam's digital lab. Click around — nothing breaks here!"
+  },
+  "desktop": {
+    "about": "About.exe",
+    "projects": "Projects.exe",
+    "skills": "Skills.exe",
+    "terminal": "Terminal.exe",
+    "downloads": "Downloads.exe",
+    "contact": "Contact.exe",
+    "soundOn": "Sound: ON",
+    "soundOff": "Sound: OFF",
+    "langToggle": "Language [EN|AR]"
+  },
+  "about": {
+    "title": "About.exe — Adam OS",
+    "name": "Khoumari Adam",
+    "role": "Embedded Systems Engineer x AI Vibe Coder",
+    "p1": "I build hardware that thinks and software that feels alive. Currently powering through my Master 1 in Embedded Systems at Bouira University (graduating in 2027). During 2025-2026, I had the honor of leading the Scientific Club Afaq as president, hosting tech workshops and hackathons for hundreds of students.",
+    "p2": "My weekends usually involve teaching robotics and Arduino to curious kids at CLS Bouira, configuring 24/7 home-lab Raspberry Pi AI agents, or tuning ESP32 motor drivers for miniature Rocket League soccer cars. If I'm not soldering a sensor array, I'm probably rewatching Spider-Man.",
+    "p3": "I believe in clean code, tactile retro interfaces, and building real tools that solve actual problems without fluff. Take a look around my OS!"
+  },
+  "projects": {
+    "title": "Projects.exe",
+    "p1_title": "Smart Irrigation System",
+    "p1_desc": "ESP32 sensors + Machine Learning predicting soil moisture and crop watering needs.",
+    "p1_stack": ["ESP32", "Soil Sensors", "Firebase", "Machine Learning"],
+    "p1_details": "I built an automated closed-loop irrigation system using capacitive soil moisture, humidity, and temperature sensors wired to an ESP32 microcontroller. The data syncs to Firebase while an ML model classifies plant species and calculates precise watering schedules, saving 35% water usage.",
+    
+    "p2_title": "ESP32 Robotic Cars (Rocket League)",
+    "p2_desc": "Taught 20+ beginners to build, program, & race autonomous cars in a 4-day intensive workshop.",
+    "p2_stack": ["ESP32", "C++", "Line-Following", "PWM Motor Drivers"],
+    "p2_details": "Designed and taught a 4-day hands-on robotics bootcamp at CLS Bouira. Guided participants from zero knowledge to assembling motor driver circuits, tuning line-following PID loops, and competing in a live 2v2 Rocket League soccer tournament with customized RC cars.",
+    
+    "p3_title": "Raspberry Pi AI Home-Server",
+    "p3_desc": "Self-hosted headless Linux VPS running autonomous AI agents 24/7 with zero cloud fees.",
+    "p3_stack": ["Linux", "Raspberry Pi 4", "Python", "Docker", "Local LLMs"],
+    "p3_details": "Configured a home-lab server on a Raspberry Pi running headless Debian Linux. Handles 24/7 background cron tasks, automated code repository indexing, web scraping pipelines, and local LLM orchestration without relying on paid cloud APIs.",
+    
+    "p4_title": "Agentic Dev Team Pipeline",
+    "p4_desc": "Autonomous multi-agent dev team: architect, builder, debugger, tester, & copy reviewer.",
+    "p4_stack": ["Antigravity", "Multi-Agent", "Node.js", "Prompt Engineering"],
+    "p4_details": "Created an agentic workflow that mimics a full engineering department. Roles are strictly partitioned into architectural planning, code execution, automated unit test generation, and strict anti-slop copy auditing to deliver clean software fast.",
+    
+    "p5_title": "School Management ERP",
+    "p5_desc": "Full private school ERP handling tuition, receipts, schedules, rosters, & financial reports.",
+    "p5_stack": ["React", "TypeScript", "ERP Architecture", "Antigravity"],
+    "p5_details": "Engineered a production-grade management platform for private educational institutions in 2 months. Features instant receipt printing, tuition tracking, interactive timetable planning, class rosters, and automated monthly income/expense balance sheets."
+  },
+  "terminal": {
+    "title": "Terminal.exe — Adam OS CLI v1.0",
+    "welcome": "Adam OS Command Line Interface v1.0\nType 'help' to list available commands.",
+    "prompt": "adam@os:~$"
+  },
+  "downloads": {
+    "title": "Downloads.exe",
+    "subtitle": "Official Documents for Khoumari Adam",
+    "cv_en": "Resume_EN.pdf (185 KB)",
+    "cv_ar": "Resume_AR.pdf (192 KB)",
+    "download_btn": "Download PDF",
+    "downloading": "Downloading",
+    "complete": "100% Complete",
+    "spider_speech": "Thwip! Got your file. Check your downloads folder!"
+  },
+  "contact": {
+    "title": "Contact.exe",
+    "email_btn": "Send Email (khoumariadam@gmail.com)",
+    "phone_btn": "Call Phone (077628207)",
+    "note": "// reach out — i actually reply"
+  },
+  "taskbar": {
+    "start": "Start",
+    "home": "Home",
+    "projects": "Projects",
+    "skills": "Skills",
+    "cv": "CV",
+    "contact": "Contact"
+  },
+  "startmenu": {
+    "about": "About Adam OS",
+    "projects": "View Projects",
+    "terminal": "Open Terminal.exe",
+    "cv": "Download Resume",
+    "contact": "Direct Contact",
+    "shutdown": "Shutdown OS..."
+  },
+  "shutdown": {
+    "message": "System halted. It is now safe to close your browser window.",
+    "reboot": "Reboot Adam OS"
+  }
+}

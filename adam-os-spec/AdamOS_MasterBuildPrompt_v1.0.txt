@@ -1,0 +1,550 @@
+================================================================================
+ADAM OS — MASTER BUILD PROMPT v1.0
+Owner: Khoumari Adam | OS: Adam OS | Mascot: Pixel Spider
+Stack: Static / Vercel | Languages: EN + AR toggle
+Paste this entire document into your AI website builder (Lovable, v0, Bolt, etc.)
+================================================================================
+
+HOW TO USE THIS PROMPT
+--------------------------------------------------------------------------------
+You are building Adam OS — a personal portfolio website that behaves like a
+retro operating system. The owner is Khoumari Adam, an embedded systems
+engineer and AI vibe coder. The site is his portfolio, his CV, his personality,
+and his love letter to Spiderman, retro computing, and the weird-good internet
+of 1999.
+
+This prompt is dense on purpose. Every line is load-bearing. Do not skim. Do
+not paraphrase. Do not "improve" the copy with corporate language. If a section
+feels over-specified, that is the point — the spec exists because without it,
+the build drifts into generic AI portfolio slop.
+
+BUILD DIRECTIVE: Build the entire site in one pass. Do not ask "what framework
+do you prefer" — the stack is locked below. Do not ask "what colors" — the
+palette is locked. Do not ask "what vibe" — the soul is locked. Execute. If
+something is genuinely ambiguous, make the coolest choice and flag it in a
+comment. Do not stall.
+
+The palette, fonts, mascot design, and motion rules are LOCKED. You may not
+introduce new colors, new fonts, new mascot poses, or new motion patterns. If
+the spec says 8px grid, you use 8px. If the spec says Pixel Spider swings and
+never walks, he swings and never walks. Treat this like a brand guideline from
+a client who will reject the build if you freelance.
+
+
+================================================================================
+LAYER 1 — THE SOUL
+================================================================================
+
+WHO IS ADAM
+--------------------------------------------------------------------------------
+Khoumari Adam. Embedded systems engineer. AI vibe coder. Former president of
+the Scientific Club Afaq at Bouira University (2025-2026). Arduino and robotics
+teacher for kids at CLS Bouira. Currently in Master 1, graduating Master 2 in
+2026-2027. He builds smart irrigation systems with ESP32 and ML prediction,
+robotic cars that play Rocket League soccer, Raspberry Pi servers that run AI
+agents 24/7, agentic dev-team workflows, and full school management software.
+He is a massive Spiderman fan. He is humble, friendly, a little nerdy, and he
+wants the site to make people smile before they even read a word.
+
+WHAT IS ADAM OS
+--------------------------------------------------------------------------------
+Adam OS is a portfolio that boots like an operating system. The visitor lands
+on a boot sequence, then a desktop. Desktop icons open windows. Windows are
+draggable, resizable, and have real Windows-9x chrome (title bar, minimize/
+maximize/close buttons, beveled borders). The whole thing is a love letter to
+Windows 95, the Y2K cyber-goth webcore aesthetic, and 8-bit pixel art — fused
+into one coherent system. It is not a "retro-themed portfolio." It is a
+functional fake OS that happens to contain a human's career.
+
+THE FEELING
+--------------------------------------------------------------------------------
+When someone visits Adam OS, they should feel three things in sequence:
+
+1. Curiosity — "Wait, is this... an OS? What is this?" The boot sequence and
+   desktop should trigger instant intrigue.
+2. Delight — "Oh, this is actually someone's portfolio. And there's a little
+   spider guy. And the windows actually work." The charm lands.
+3. Respect — "This person builds real things. Smart irrigation. Robotic cars.
+   AI agents. This isn't just a pretty site." The projects window earns it.
+
+The tone is friendly, natural, humble. Not corporate. Not "passionate about
+leveraging synergies." Not "dynamic problem-solver." Real sentences. Real
+personality. A little self-aware humor about the OS metaphor. The site should
+feel like Adam made it himself on a late night because he thought it would be
+fun — because that is exactly the energy to capture.
+
+THE MASCOT — PIXEL SPIDER
+--------------------------------------------------------------------------------
+Pixel Spider is Adam's digital avatar. He is a chibi, Spiderman-inspired
+character rendered in 8-bit pixel art. He is NOT literal Spiderman — no Marvel
+logo, no exact suit copy. He wears a black suit with a cobalt-blue (#212CF4)
+web pattern, big white lens-eyes (expressive, anime-dot style), and a tiny
+build. He is cute, a little edgy, and unreasonably charming for a 256x256
+sprite.
+
+PIXEL SPIDER MOTION LAW — CRITICAL:
+Pixel Spider SWINGS on web threads and CRAWLS along window edges. He NEVER
+walks bipedally. He NEVER stands still in the middle of a page. If he needs
+to move from point A to point B, he either swings across (web line attaches
+to top of viewport, body pendulums) or he crawls along the border of a window.
+This is his signature. It is what makes him feel like Spiderman without being
+Spiderman. Violate this and the mascot becomes a generic pixel guy.
+
+Pixel Spider appears in a speech bubble on first load to greet the visitor.
+He appears in the boot sequence swinging across the screen. He appears in the
+CV download theater (grabs the file, swings off, throws it to the user). He is
+the host of the OS. He is not decoration — he is the guide.
+
+WHAT ADAM OS IS NOT
+--------------------------------------------------------------------------------
+- NOT a generic dark-mode portfolio with a hero image and three cards.
+- NOT a "scroll to see my journey" timeline site.
+- NOT a corporate landing page with CTAs above the fold.
+- NOT a Tailwind UI template with the colors swapped.
+- NOT a site that takes itself seriously. Adam OS has a sense of humor.
+- NOT a site that is only a joke. The work underneath is real engineering.
+
+
+================================================================================
+LAYER 2 — THE SKELETON
+================================================================================
+
+TECH STACK — LOCKED
+--------------------------------------------------------------------------------
+Framework:     React + Next.js (static export)
+Styling:       Tailwind CSS + CSS custom properties
+Animation:     Framer Motion (drag/resize) + CSS keyframes (pixel loops)
+Fonts:         Press Start 2P, Geist (fallback Inter), JetBrains Mono
+Icons:         Custom 64x64 pixel PNGs (AI-generated) — NO Lucide, NO Material
+Audio:         Web Audio API oscillators (no audio files)
+Hosting:       Vercel (static, zero backend)
+i18n:          Custom JSON dictionary (EN + AR only, RTL on Arabic)
+
+
+TAILWIND CONFIG — PASTE VERBATIM
+--------------------------------------------------------------------------------
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        base:     '#0B0B10',  // page background, deepest layer
+        panel:    '#171722',  // window body, cards
+        panel2:   '#1f1f2e',  // title bars, secondary surfaces
+        spidey:   '#212CF4',  // cobalt blue — primary accent
+        text:     '#FFFFFF',  // headings, primary text
+        textDim:  '#E1E2E7',  // body text
+        lavender: '#C3C6ED',  // labels, captions, halftone dots
+        green:    '#72FFB4',  // success, online, confirm
+        red:      '#FF3A66',  // error, close button, danger
+        yellow:   '#FFE55C',  // warning, minimize, highlight
+        slate:    '#B0B3BC',  // borders, disabled, dividers
+      },
+      fontFamily: {
+        pixel: ['"Press Start 2P"', 'monospace'],
+        body:  ['Geist', 'Inter', 'sans-serif'],
+        mono:  ['"JetBrains Mono"', 'monospace'],
+      },
+      spacing: {
+        // 8px base grid — all spacing derives from this
+        px: '2px',   // hairline borders
+        1:  '4px',   // tight gaps
+        2:  '8px',   // base unit
+        4:  '16px',  // standard padding
+        6:  '24px',  // section gaps
+        8:  '32px',  // large gaps
+      },
+    }
+  }
+}
+
+
+Z-INDEX MAP — LOCKED
+--------------------------------------------------------------------------------
+Layer              z-index   What lives here
+Wallpaper          0         Desktop background pattern
+Desktop icons      10        Desktop shortcut icons
+Windows (resting)  100       Open application windows
+Windows (active)   200       Currently focused window (on click)
+Taskbar            500       Bottom bar with start menu + clock
+Pixel Spider       750       Mascot — always above windows, below modals
+Speech bubbles     760       Mascot dialogue
+Modal dialogs      900       Confirm/error dialogs
+Boot overlay       9999      Full-screen boot sequence (covers all)
+
+
+ANIMATION TIMINGS — LOCKED
+--------------------------------------------------------------------------------
+Event              Duration    Easing
+Window open        180ms       cubic-bezier(0.2, 0.8, 0.2, 1) — slight overshoot
+Window close       120ms       ease-in — quick vanish
+Window drag        0ms (1:1)   none — instant follow
+Icon hover         100ms       ease-out — scale 1.0 -> 1.08
+Pixel Spider idle  2000ms loop steps(2) — 2-frame blink
+Pixel Spider swing 1200ms      cubic-bezier(0.4, 0, 0.6, 1) — pendulum
+Boot sequence      3200ms total steps(8) for text reveal
+Cursor blink       530ms loop  steps(1) — classic terminal
+Halftone drift     60s loop    linear — imperceptible ambient motion
+
+
+COMPONENT INVENTORY
+--------------------------------------------------------------------------------
+Build these as discrete React components. Each window is an instance of
+<Window /> with a title, icon, and children prop. Windows are managed by a
+WindowManager context that handles z-ordering, focus, open/close state.
+
+<BootSequence />      Full-screen boot overlay — BIOS text, progress bar, swing-in
+<Desktop />           Wallpaper + icon grid + taskbar container
+<DesktopIcon />       64x64 icon + label, double-click opens window
+<Window />            Draggable, resizable window with 9x chrome
+<WindowManager />     Context: open/close/focus/minimize, z-index ordering
+<Taskbar />           Bottom bar — Start button, open window tabs, clock, lang toggle
+<StartMenu />         Popup menu — links to all windows + shutdown (easter egg)
+<PixelSpider />       Mascot renderer — takes frame prop (idle, blink, swing, etc.)
+<SpeechBubble />      Positions near Pixel Spider, typewriter text reveal
+<AboutWindow />       Adam's bio, portrait, personality
+<ProjectsWindow />    Project cards — 5 projects with expandable details
+<DownloadsWindow />   CV download with theatrical animation
+<ContactWindow />     Email + phone only. NO GitHub, NO LinkedIn.
+<LanguageToggle />    EN <-> AR switch. AR triggers RTL layout.
+<SoundManager />      Web Audio API — click, open, close, error, boot chime
+
+
+MOBILE UX — CRITICAL
+--------------------------------------------------------------------------------
+Adam explicitly demanded the phone UX be very, very good. Most retro-OS
+portfolios die on mobile because they shrink a desktop layout into a phone
+screen. Do not do this. Mobile gets its own UX model.
+
+Mobile Adaptation Rules:
+- No desktop metaphor on phone. On screens < 768px, the desktop + taskbar
+  metaphor is replaced with a single-window-at-a-time model. Think iOS
+  SpringBoard, not shrunk Windows 95.
+- Home screen = app grid. Desktop icons become a 3-column grid of tappable
+  app icons (About, Projects, Downloads, Contact). Tapping opens that window
+  full-screen.
+- Windows are full-screen sheets. On mobile, windows take 100vh with a top
+  bar (title + back/close). No drag, no resize — those are desktop-only.
+- Pixel Spider lives in the corner. On mobile, he perches in a fixed position
+  (bottom-right, 64x64) and reacts to navigation. He does not swing across
+  the small screen — too chaotic on a phone.
+- Taskbar becomes a bottom tab bar. 4 tabs: Home, Projects, CV, Contact. Plus
+  a floating language toggle.
+- Boot sequence stays. But shorter on mobile (2.5s instead of 3.2s).
+- Touch targets minimum 44x44px. No exceptions.
+- Pinch-to-zoom disabled. The OS is the viewport.
+
+
+PERFORMANCE BUDGET
+--------------------------------------------------------------------------------
+Metric               Target          How
+First Contentful Paint  < 1.2s       Static export, inline critical CSS
+Boot sequence ends      < 3.5s       Hard cap — do not extend for slow connections
+Total JS bundle         < 180kb gz   No heavy libs. Framer Motion is the only big dep.
+Mascot sprite sheet     < 90kb       256x256 frames, 8 frames max, PNG-8
+Icon set                < 60kb total 64x64 PNG-8, 20 icons
+Lighthouse mobile       90+ all      Non-negotiable
+
+
+ACCESSIBILITY FLOOR
+--------------------------------------------------------------------------------
+- All interactive elements keyboard-navigable. Tab order follows visual order.
+- Windows trap focus when open, restore focus to trigger on close.
+- ARIA labels on all icon-only buttons (close, minimize, etc.).
+- prefers-reduced-motion disables Pixel Spider swing, boot sequence collapses
+  to instant load.
+- Color contrast: text on panel backgrounds must hit WCAG AA (4.5:1).
+- Sound is opt-in. First visit shows a small "enable sound?" toast. No autoplay.
+
+
+================================================================================
+LAYER 3 — THE SKIN (ART BIBLE, COMPRESSED)
+================================================================================
+
+COLOR SYSTEM — 11 TOKENS, NO MORE
+--------------------------------------------------------------------------------
+Token       Hex       Usage
+base        #0B0B10   Page bg, deepest layer, behind wallpaper
+panel       #171722   Window bodies, card surfaces, modal bg
+panel2      #1f1f2e   Title bars, secondary surfaces, input fields
+spidey      #212CF4   Primary accent — links, active states, web pattern, focus
+text        #FFFFFF   Headings, primary text on dark
+textDim     #E1E2E7   Body text, paragraphs, descriptions
+lavender    #C3C6ED   Labels, captions, halftone dots, meta text
+green       #72FFB4   Success, online status, confirm buttons
+red         #FF3A66   Close button, error states, danger zones
+yellow      #FFE55C   Minimize button, warnings, highlights
+slate       #B0B3BC   Borders, dividers, disabled states
+
+FORBIDDEN COLOR RULES:
+- Never use pure black (#000) for backgrounds — use base (#0B0B10).
+- Never put yellow text on white. Never put green text on yellow.
+- Never use spidey blue (#212CF4) for body text — fails contrast on panel.
+- Never introduce gradients between tokens. Solid fills only.
+- Never use opacity below 40% on any token. Use lavender or slate at full opacity.
+
+
+TYPOGRAPHY — 3 FONTS, STRICT ROLES
+--------------------------------------------------------------------------------
+Font             Role                              Sizes
+Press Start 2P   Pixel headings, window titles,    10px / 13px / 16px / 24px only
+                 OS labels, boot text
+Geist            All body text, paragraphs,        12px / 14px / 16px / 18px
+(fallback Inter) project descriptions
+JetBrains Mono   Code blocks, file paths, labels,  9px / 10px / 11px / 12px
+                 captions, technical readouts
+
+RULE: Press Start 2P is never body text (illegible small). Geist is never window
+titles (too soft for OS chrome). JetBrains Mono is never headings (too thin).
+Each font has one job. Do not cross them.
+
+
+PIXEL RESOLUTION & SCALING
+--------------------------------------------------------------------------------
+- All pixel art authored at native resolution, scaled with
+  image-rendering: pixelated. Never smooth-scale pixel art.
+- Mascot frames: 256x256 native. Display 128x128 desktop, 96x96 mobile.
+- Icons: 64x64 native. Display 48x48 desktop, 40x40 mobile.
+- Halftone dot pattern: 18px grid, 1.5px dots, lavender at 6% opacity on base.
+- No sub-pixel positioning for pixel art. Always round to integers.
+
+
+STROKE & OUTLINE LANGUAGE
+--------------------------------------------------------------------------------
+- Window borders: 2px solid slate with 1px inset highlight (top-left) and 1px
+  inset shadow (bottom-right) — classic 9x bevel.
+- Button borders: 1px solid with bevel — top/left = lighter, bottom/right =
+  darker. On press, invert.
+- Icon outlines: 2px black (#0B0B10) on all pixel art. No exceptions.
+- Focus rings: 2px solid spidey (#212CF4) with 2px offset. Never browser default.
+
+
+MASCOT SPEC — PIXEL SPIDER
+--------------------------------------------------------------------------------
+Attribute     Spec
+Suit          Black (#0B0B10) with cobalt web pattern (#212CF4)
+Eyes          White (#FFFFFF) almond lenses, black outline, expressive
+Build         Chibi — large head, small body, stubby limbs (2:1 head:body)
+Web shooters  Cobalt web lines from wrists — geometric, not silky
+Frames        8 total: idle, blink, loading, celebrating, sleeping, typing,
+              waving, swinging
+Outline       2px black on all frames, consistent across poses
+
+
+SOUND DESIGN
+--------------------------------------------------------------------------------
+- Boot chime: 2-note ascending (C5 -> E5), 0.4s, square wave. Original, not Windows.
+- Click: 0.05s, 800Hz square wave, very quiet (-20dB).
+- Window open: 0.15s, rising sweep 400->600Hz, triangle wave.
+- Window close: 0.1s, falling sweep 500->300Hz, triangle wave.
+- Error: 0.2s, 200Hz square wave, two stutters. Classic bonk.
+- CV download: 0.8s fanfare — 4 ascending notes (C5, E5, G5, C6), square wave.
+- All sounds via Web Audio API oscillators. No audio files. Zero network cost.
+- Mute toggle in taskbar. Respects mute across sessions via localStorage.
+
+
+================================================================================
+THE BUILD — PAGE BY PAGE
+================================================================================
+
+1. BOOT SEQUENCE (first 3.2s)
+--------------------------------------------------------------------------------
+Full-screen overlay (z-9999) over everything. Black background (#0B0B10).
+JetBrains Mono, green text (#72FFB4). Terminal-style lines reveal one by one
+with 200ms stagger:
+
+  ADAM OS v1.0 — © 2026 KHOUMARI ADAM
+  BIOS PhoenixSpider ROM v2.4
+  Memory check........... 128MB OK
+  Detecting hardware..... ESP32 / RPi / GPT-ON
+  Loading kernel......... OK
+  Mounting /home/adam.... OK
+  Starting Pixel Spider.. OK
+  > booting GUI_
+
+At 2.4s, cursor disappears and Pixel Spider swings in from top-left on a web
+line, landing center-bottom. Speech bubble: "Hey! Welcome to Adam OS. I'm
+Pixel Spider. Click around — don't be shy." At 3.2s, overlay fades out (200ms)
+revealing the desktop.
+
+
+2. DESKTOP (home)
+--------------------------------------------------------------------------------
+- Wallpaper: Halftone dot pattern (lavender, 6% opacity) over base background.
+  Subtle cobalt radial glow from center (10% opacity, 600px radius).
+- Desktop icons (left column, top to bottom): About Me, Projects, Downloads
+  (CV), Contact, Sound On/Off, Language EN/AR. Each = 64x64 icon + label below
+  in Press Start 2P 10px.
+- Taskbar (bottom, full width): Start button (left, Pixel Spider icon), open
+  window tabs (center), system clock + sound toggle + language toggle (right).
+  Height 40px, panel2 background, top border 1px slate.
+- Pixel Spider: Idle in bottom-right corner of desktop, above taskbar. Blinks
+  every 4s. Every 30s, swings to a random window edge, crawls along it, swings
+  back.
+
+
+3. ABOUT WINDOW
+--------------------------------------------------------------------------------
+Window title: About.exe — Adam OS
+Contents: Adam's pixel-art portrait (256x256), name in Press Start 2P, title
+"Embedded Systems Engineer x AI Vibe Coder", 3-paragraph bio in first person.
+Humble and friendly tone. Mentions: club president Afaq 2025-2026, robotics
+teacher at CLS Bouira, Master 1 student graduating 2026-2027, Spiderman fan,
+builder of weird-good things. No buzzwords. No "passionate about." Real
+sentences.
+
+
+4. PROJECTS WINDOW
+--------------------------------------------------------------------------------
+Window title: Projects.exe
+Grid of 5 project cards (2 columns desktop, 1 column mobile). Each card:
+pixel icon (64x64), project name (Press Start 2P), 2-sentence description
+(Geist), tech stack tags (JetBrains Mono pills, slate border), expandable
+"details" section.
+
+Project                  One-liner
+Smart Irrigation System  ESP32 + sensors + Firebase + ML predicting plant type
+ESP32 Robotic Cars       Taught zero-knowledge participants to build + race
+                         autonomous cars in 4 days — line-following + Rocket
+                         League soccer challenge
+Raspberry Pi AI Server   Self-hosted Linux VPS running AI agents 24/7 — no cloud
+Agentic Dev Team         Multi-agent workflow: architect, planner, debugger,
+                         tester, marketer, content creator — full dev team
+School Management        Full ERP: receipts, payments, appointments, scheduling,
+Software                 sales, finances, reports, timetable, planner. 2 months.
+                         Built with Claude + Antigravity.
+
+
+5. DOWNLOADS WINDOW — THE CV THEATER
+--------------------------------------------------------------------------------
+THIS IS THE SIGNATURE INTERACTION. The CV download is not a button. It is a
+theatrical animation sequence. This is the moment visitors remember. Get it
+exactly right.
+
+Window title: Downloads.exe
+Contents: file listing showing Resume_EN.pdf and Resume_AR.pdf with file sizes.
+Each has a "Download" button styled as a Windows-9x beveled button.
+
+ON CLICK, THE SEQUENCE FIRES:
+1. Pixel Spider (idle in corner) perks up — eyes widen (0.2s frame swap).
+2. He shoots a web line to the file icon in the Downloads window (0.3s, web
+   line draws from his wrist to the file).
+3. He swings across the screen, grabs the file (0.6s pendulum arc).
+4. He swings to the top of the viewport and throws the file toward the user
+   (0.4s — file scales up and flies "toward camera").
+5. A Windows-9x download dialog appears:
+   Downloading Resume_EN.pdf... [############] 100% Complete
+   with a progress bar (0.8s fill).
+6. The actual file download triggers (browser native download).
+7. Pixel Spider returns to his corner with a celebratory frame (arms up, 0.5s).
+8. Speech bubble: "Got it! Check your downloads folder. See you on the other
+   side."
+
+Total sequence: 3.2s. Must feel snappy, not slow. Download fanfare sound plays
+during the progress bar fill.
+
+
+6. CONTACT WINDOW
+--------------------------------------------------------------------------------
+Window title: Contact.exe
+Contents: two large beveled buttons only — Email (khoumariadam@gmail.com) and
+Phone (077628207). Clicking email opens mailto:. Clicking phone opens tel:.
+NO forms. NO social links. NO GitHub. NO LinkedIn. Adam wants people to reach
+out directly or download the CV. That's it.
+
+Below the buttons, a small line in JetBrains Mono:
+  // reach out — i actually reply
+
+
+================================================================================
+CONSTRAINTS & GUARDRAILS
+================================================================================
+
+COPYRIGHT GUARDRAILS
+--------------------------------------------------------------------------------
+- Pixel Spider is Spiderman-inspired, not Spiderman. No Marvel logo. No exact
+  suit design. No "Web-Slinger" or "Friendly Neighborhood" taglines. The suit
+  is black with cobalt webs — distinct from any Marvel suit.
+- No copyrighted sound effects. Boot chime and clicks are original Web Audio
+  oscillator tones, not samples from Windows or Nintendo.
+- No copyrighted pixel art rips. All sprites are AI-generated original work.
+- The Windows-9x aesthetic is a design language, not a trademark. Use beveled
+  buttons and title bars freely, but do not use the Windows logo or the word
+  "Windows" in the UI.
+
+
+NO AI SLOP LIST — CRITICAL
+--------------------------------------------------------------------------------
+If any of these phrases appear in the generated copy, the build has failed.
+Rewrite. The site must sound like Adam, not like a LinkedIn bot having a fever
+dream.
+
+BANNED PHRASES:
+- "passionate about" / "passionate developer"
+- "leverage" / "leveraging"
+- "seamless" / "seamlessly"
+- "cutting-edge" / "bleeding-edge" / "state-of-the-art"
+- "robust" / "scalable" / "enterprise-grade"
+- "dynamic" / "innovative" / "disruptive"
+- "problem-solver" / "fast learner" / "team player"
+- "elevate your brand" / "drive results" / "unlock potential"
+- "in today's fast-paced world" / "in the digital age"
+- "with a proven track record of"
+- Any sentence that starts with "As a..." — banned.
+- Any paragraph that could appear unchanged on 1000 other portfolios — banned.
+
+WHAT TO DO INSTEAD:
+Write in first person. Use short sentences. Be specific — name the actual
+sensors, the actual tools, the actual hours. Let humor leak in. If a sentence
+sounds like it could be on a corporate "About Us" page, delete it and try
+again. Adam is a real person with a real personality. The copy should reflect
+that.
+
+
+TONE GUARDRAILS
+--------------------------------------------------------------------------------
+- Humble, not self-deprecating. Adam is good at what he does. He doesn't need
+  to apologize for it. But he also doesn't need to brag.
+- Friendly, not casual. Personality in speech bubbles, professional energy in
+  project descriptions.
+- Nerdy, not try-hard. The Spiderman references and OS metaphor are genuine.
+  Don't overdo it. One Spiderman nod per window is enough.
+- Confident, not arrogant. "I built this" not "I pioneered revolutionary
+  solutions."
+
+
+================================================================================
+DELIVERABLE CHECKLIST
+================================================================================
+[ ] Boot sequence (3.2s, BIOS text, Pixel Spider swing-in, speech bubble)
+[ ] Desktop with wallpaper, 6 desktop icons, taskbar, system clock
+[ ] WindowManager (open, close, focus, minimize, z-ordering, drag, resize)
+[ ] About window (portrait, bio, 3 paragraphs, first person)
+[ ] Projects window (5 project cards, expandable details, correct tech tags)
+[ ] Downloads window with CV theater animation sequence (3.2s total)
+[ ] Contact window (email + phone only, no social links)
+[ ] Pixel Spider component (8 frames, idle blink, swing, crawl, speech bubbles)
+[ ] Language toggle EN <-> AR with RTL layout flip on Arabic
+[ ] Sound manager (Web Audio oscillators, mute toggle, localStorage persistence)
+[ ] Start menu (popup, links to all windows, shutdown easter egg)
+[ ] Mobile adaptation (app grid, full-screen sheets, bottom tab bar, 44px targets)
+[ ] prefers-reduced-motion support (disable swing, collapse boot)
+[ ] Keyboard navigation (tab order, focus trap, escape to close windows)
+[ ] Static export to Vercel (no backend, no server functions)
+[ ] Lighthouse mobile 90+ on all categories
+[ ] Total JS bundle under 180kb gzipped
+[ ] Zero banned phrases from the No AI Slop list in final copy
+
+
+================================================================================
+FINAL DIRECTIVE
+================================================================================
+THE BUILD IS DONE WHEN:
+The site boots, the windows open and drag, Pixel Spider swings, the CV
+download theater fires correctly, mobile feels like a native app, the copy
+sounds like Adam, and not a single banned phrase appears anywhere. If all of
+that is true, ship it. If any of it is missing, you are not done.
+
+================================================================================
+END OF PROMPT — v1.0 — READY TO BUILD
+================================================================================

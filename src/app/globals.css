@@ -1,0 +1,232 @@
+@font-face {
+  font-family: 'PixelAE';
+  src: url('/fonts/PixelAE-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #0B0B10;
+  --bg-panel: #171722;
+  --bg-panel2: #1f1f2e;
+  --accent-spidey: #212CF4;
+  --text-primary: #FFFFFF;
+  --text-dim: #E1E2E7;
+  --lavender: #C3C6ED;
+  --green: #72FFB4;
+  --red: #FF3A66;
+  --yellow: #FFE55C;
+  --slate: #B0B3BC;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Pixel art rendering enforcement */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Halftone background pattern */
+.bg-halftone {
+  background-color: #0B0B10;
+  background-image: radial-gradient(#C3C6ED 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+  background-position: 0 0;
+}
+
+.bg-halftone-overlay {
+  opacity: 0.06;
+}
+
+/* Halftone drift — 60s imperceptible ambient motion (spec requirement) */
+@keyframes halftone-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 18px 18px; }
+}
+
+.bg-halftone-animate {
+  animation: halftone-drift 60s linear infinite;
+}
+
+/* Radial cobalt desktop glow */
+.bg-cobalt-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(33, 44, 244, 0.12) 0%, transparent 65%);
+}
+
+/* Windows 9x Bevels */
+.win9x-box-raised {
+  background-color: #171722;
+  border: 2px solid #B0B3BC;
+  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+}
+
+.win9x-box-recessed {
+  background-color: #1f1f2e;
+  border: 1px solid #B0B3BC;
+  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+}
+
+.win9x-button {
+  background-color: #1f1f2e;
+  border: 1px solid #B0B3BC;
+  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+  color: #FFFFFF;
+  transition: all 0.05s ease;
+}
+
+.win9x-button:hover {
+  background-color: #1f1f2e; /* panel2 token — was unlocked #2a2a3e */
+  filter: brightness(1.15);
+}
+
+.win9x-button:active {
+  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+  transform: translate(1px, 1px);
+}
+
+.win9x-button-spidey {
+  background-color: #212CF4;
+  border: 1px solid #B0B3BC;
+  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+  color: #FFFFFF;
+}
+
+.win9x-button-spidey:active {
+  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+}
+
+/* Active window shadow */
+.window-active-shadow {
+  box-shadow: 0 4px 0 #0B0B10, 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Inactive window shadow */
+.window-inactive-shadow {
+  box-shadow: 0 2px 0 #1f1f2e;
+}
+
+/* 9x Focus outline — spidey accent, 2px offset per spec */
+:focus-visible {
+  outline: 2px solid #212CF4;
+  outline-offset: 2px;
+}
+
+/* Windows 9x Scrollbar */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #1f1f2e;
+  border: 1px solid #B0B3BC;
+  box-shadow: inset 1px 1px 0 #0B0B10;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #171722;
+  border: 1px solid #B0B3BC;
+  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #1f1f2e; /* panel2 token */
+  filter: brightness(1.2);
+}
+
+/* CRT Scanlines keyframe */
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+.crt-scanlines {
+  position: relative;
+}
+
+.crt-scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 99;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+/* Authentic CRT Bloom & RGB Flicker Overlay */
+.crt-bloom-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  box-shadow: inset 0 0 100px rgba(33, 44, 244, 0.25);
+  background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(11, 11, 16, 0.6) 100%);
+  backdrop-filter: blur(0.3px) contrast(105%) brightness(108%);
+}
+
+/* Terminal cursor blink — 530ms steps(1) per spec */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursor-blink 530ms steps(1) infinite;
+}
+
+/* ============================================================
+   prefers-reduced-motion — WCAG & spec compliance
+   Disables: Spider swing, boot animations, halftone drift
+   Boot sequence collapses to instant load via JS hook
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all Framer Motion & CSS animations globally */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Halftone drift — stop it */
+  .bg-halftone-animate {
+    animation: none;
+  }
+
+  /* Cursor blink — keep it readable but instant */
+  .cursor-blink {
+    animation: none;
+    opacity: 1;
+  }
+}
