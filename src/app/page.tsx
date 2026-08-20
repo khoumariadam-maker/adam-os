@@ -8,6 +8,7 @@ import { MascotProvider } from '@/context/MascotContext';
 import { BootSequence } from '@/components/BootSequence';
 import { Desktop } from '@/components/Desktop';
 import { CustomCursor } from '@/components/CustomCursor';
+import { SoundToast } from '@/components/SoundToast';
 
 export default function Home() {
   const [isBooting, setIsBooting] = useState<boolean>(true);
@@ -35,6 +36,9 @@ export default function Home() {
               {isBooting && (
                 <BootSequence onComplete={() => setIsBooting(false)} />
               )}
+
+              {/* First-visit sound opt-in toast (spec requirement) */}
+              {!isBooting && <SoundToast />}
             </main>
           </MascotProvider>
         </WindowManagerProvider>

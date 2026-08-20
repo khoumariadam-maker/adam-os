@@ -88,13 +88,14 @@ export const ControlPanelWindow: React.FC = () => {
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setScanlineOpacity(val);
+                  // Use CSS custom property on :root — the only way to style pseudo-elements via JS
                   if (typeof window !== 'undefined') {
-                    const scanlineEl = document.querySelector('.crt-scanlines::before') as HTMLElement;
-                    if (scanlineEl) scanlineEl.style.opacity = (val / 100).toString();
+                    document.documentElement.style.setProperty('--scanline-opacity', String(val / 100));
                   }
                 }}
                 className="w-full accent-spidey cursor-pointer"
               />
+              <p className="text-[10px] text-lavender font-mono">Adjust CRT scanline intensity. Changes apply live.</p>
             </div>
           </div>
         )}
@@ -125,7 +126,7 @@ export const ControlPanelWindow: React.FC = () => {
               <p><span className="text-yellow">KERNEL:</span> PhoenixSpider ROM v2.4</p>
               <p><span className="text-yellow">FRAMEWORK:</span> Next.js + React + Tailwind CSS</p>
               <p><span className="text-yellow">MASCOT:</span> Pixel Spider (Chibi 8-bit hybrid)</p>
-              <p><span className="text-green">STATUS:</span> OPERATIONAL // 100% SPEC COMPLIANT</p>
+              <p><span className="text-green">STATUS:</span> ALL SYSTEMS GO // ADAM OS v1.0</p>
             </div>
           </div>
         )}

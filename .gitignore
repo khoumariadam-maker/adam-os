@@ -21,12 +21,6 @@ yarn-error.log*
 
 # raw uncompressed asset source files
 /adam_assets
-/public/mascot/
-/public/icons/
-/public/wallpapers/
-/public/fonts/
-*.pdf
-*.ttf
 
 # vercel
 .vercel

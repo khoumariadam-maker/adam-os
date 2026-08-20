@@ -25,6 +25,7 @@ interface WindowManagerContextType {
   focusWindow: (id: WindowId) => void;
   toggleMaximizeWindow: (id: WindowId) => void;
   updatePosition: (id: WindowId, position: { x: number; y: number }) => void;
+  updateSize: (id: WindowId, size: { width: number; height: number }) => void;
 }
 
 const initialWindows: Record<WindowId, WindowState> = {
@@ -238,6 +239,16 @@ export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  const updateSize = (id: WindowId, size: { width: number; height: number }) => {
+    setWindows((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        size,
+      },
+    }));
+  };
+
   return (
     <WindowManagerContext.Provider
       value={{
@@ -249,6 +260,7 @@ export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({
         focusWindow,
         toggleMaximizeWindow,
         updatePosition,
+        updateSize,
       }}
     >
       {children}

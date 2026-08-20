@@ -61,7 +61,7 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
         result = (
           <div className="space-y-1 text-lavender font-mono text-xs">
             <p className="text-yellow">Adam OS Interactive Commands:</p>
-            <p><span className="text-green">spiderman</span>  - Play the 1994 Spider-Man Animated Series 8-bit theme song ♫</p>
+            <p><span className="text-green">spidey</span>     - Play the Pixel Spider 8-bit theme song ♫ (original composition)</p>
             <p><span className="text-green">matrix</span> / <span className="text-green">hack</span> - Simulated hacker matrix readout</p>
             <p><span className="text-green">reboot</span>     - Reboot Adam OS to full BIOS sequence</p>
             <p><span className="text-green">wallpaper</span>  - Switch wallpaper (usage: wallpaper night-city|cyber-forest|pixel-mountains|y2k-pattern)</p>
@@ -80,14 +80,14 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
         );
         break;
 
-      case 'spiderman':
+      case 'spidey':
       case 'theme':
         playSpidermanTheme();
         mascot.setFrame('celebrating');
-        mascot.setSpeechText('♫ Playing 1994 Spider-Man Animated Series Theme in 8-Bit! ♫');
+        mascot.setSpeechText('♫ Pixel Spider theme activated! Original 8-bit composition by Adam OS. ♫');
         result = (
           <div className="text-yellow font-pixel text-xs space-y-1">
-            <p>♫ Playing Spider-Man (1994 Animated Series) 8-Bit Theme ♫</p>
+            <p>♫ Playing Pixel Spider Theme (8-bit original composition) ♫</p>
             <p className="text-green text-[10px]">Notes: C4 ➔ Eb4 ➔ F4 ➔ G4 ➔ Eb4 ➔ C4</p>
           </div>
         );
@@ -254,7 +254,7 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
           {history.map((item, idx) => (
             <div key={idx} className="space-y-1">
               <div className="flex items-center gap-2 text-lavender">
-                <span className="text-spidey font-bold">{t.terminal.prompt}</span>
+                <span className="text-green font-bold">{t.terminal.prompt}</span>
                 <span>{item.command}</span>
               </div>
               <div className="pl-4">{item.result}</div>
@@ -265,7 +265,7 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
 
         {/* Command Input Form */}
         <form onSubmit={handleCommand} className="flex items-center gap-2 mt-4 pt-2 border-t border-slate/30">
-          <span className="text-spidey font-bold select-none">{t.terminal.prompt}</span>
+          <span className="text-green font-bold select-none">{t.terminal.prompt}</span>
           <input
             ref={inputRef}
             type="text"

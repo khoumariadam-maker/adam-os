@@ -60,7 +60,7 @@ export const DesktopIcon: React.FC<DesktopIconProps> = ({
         />
       </div>
       <span
-        className={`font-pixel text-[14px] text-center leading-tight break-words max-w-full px-1 py-0.5 tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${
+        className={`font-pixel text-[13px] text-center leading-tight break-words max-w-full px-1 py-0.5 tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${
           isSelected ? 'bg-spidey text-text font-bold' : 'text-text group-hover:text-yellow'
         }`}
       >

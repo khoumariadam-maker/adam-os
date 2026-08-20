@@ -216,7 +216,7 @@ export const SpiderSnakeWindow: React.FC = () => {
 
         {/* Controls / Start Bar */}
         <div className="w-full flex justify-between items-center gap-2 font-mono text-[10px]">
-          <span className="text-lavender">CONTROLS: ARROWS / WASD</span>
+          <span className="text-lavender hidden md:block">CONTROLS: ARROWS / WASD</span>
           {!isPlaying && !isGameOver && (
             <button
               onClick={handleStart}
@@ -225,6 +225,32 @@ export const SpiderSnakeWindow: React.FC = () => {
               START GAME
             </button>
           )}
+        </div>
+
+        {/* Mobile D-Pad touch controls */}
+        <div className="flex flex-col items-center gap-1 md:hidden mt-1">
+          <button
+            onPointerDown={(e) => { e.preventDefault(); if (isPlaying && dir !== 'DOWN') setDir('UP'); }}
+            className="win9x-button w-12 h-12 font-pixel text-lg flex items-center justify-center"
+            aria-label="Move up"
+          >▲</button>
+          <div className="flex gap-1">
+            <button
+              onPointerDown={(e) => { e.preventDefault(); if (isPlaying && dir !== 'RIGHT') setDir('LEFT'); }}
+              className="win9x-button w-12 h-12 font-pixel text-lg flex items-center justify-center"
+              aria-label="Move left"
+            >◀</button>
+            <button
+              onPointerDown={(e) => { e.preventDefault(); if (isPlaying && dir !== 'UP') setDir('DOWN'); }}
+              className="win9x-button w-12 h-12 font-pixel text-lg flex items-center justify-center"
+              aria-label="Move down"
+            >▼</button>
+            <button
+              onPointerDown={(e) => { e.preventDefault(); if (isPlaying && dir !== 'LEFT') setDir('RIGHT'); }}
+              className="win9x-button w-12 h-12 font-pixel text-lg flex items-center justify-center"
+              aria-label="Move right"
+            >▶</button>
+          </div>
         </div>
       </div>
     </Window>

@@ -160,7 +160,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
           <div className="w-12 h-12 flex items-center justify-center font-pixel text-xl text-yellow">
             {isMuted ? '🔇' : '🔊'}
           </div>
-          <span className="font-pixel text-[14px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+          <span className="font-pixel text-[13px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
             {isMuted ? t.desktop.soundOff : t.desktop.soundOn}
           </span>
         </button>
@@ -181,7 +181,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
           <div className="w-12 h-12 flex items-center justify-center font-pixel text-xl text-lavender">
             🌐
           </div>
-          <span className="font-pixel text-[14px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+          <span className="font-pixel text-[13px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
             [{lang.toUpperCase()}]
           </span>
         </button>

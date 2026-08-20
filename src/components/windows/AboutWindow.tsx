@@ -67,7 +67,7 @@ export const AboutWindow: React.FC = () => {
                 <h1 className="font-pixel text-base md:text-lg text-text mb-0.5">
                   {t.about.name}
                 </h1>
-                <p className="font-mono text-xs text-lavender font-semibold uppercase tracking-wider">
+                <p className="font-pixel text-[10px] text-lavender uppercase tracking-wider">
                   {t.about.role}
                 </p>
               </div>

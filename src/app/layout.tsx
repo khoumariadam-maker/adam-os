@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Adam OS — Khoumari Adam Portfolio',
@@ -21,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased overflow-hidden bg-base text-text">
+      <body className={`${inter.variable} antialiased overflow-hidden bg-base text-text`}>
         {children}
       </body>
     </html>

@@ -12,7 +12,7 @@ interface WindowProps {
 }
 
 export const Window: React.FC<WindowProps> = ({ id, children }) => {
-  const { windows, activeWindowId, closeWindow, minimizeWindow, focusWindow, toggleMaximizeWindow } = useWindowManager();
+  const { windows, activeWindowId, closeWindow, minimizeWindow, focusWindow, toggleMaximizeWindow, updateSize } = useWindowManager();
   const { playWindowClose, playClick } = useSound();
   const mascot = useMascot();
   const shouldReduceMotion = useReducedMotion();
@@ -95,9 +95,7 @@ export const Window: React.FC<WindowProps> = ({ id, children }) => {
   };
 
   // Animation config — respects prefers-reduced-motion
-  const windowOpenAnim = shouldReduceMotion
-    ? { scale: 1, opacity: 1 }
-    : { scale: 1, opacity: 1 };
+  const windowOpenAnim = { scale: 1, opacity: 1 };
   const windowInitAnim = shouldReduceMotion
     ? { scale: 1, opacity: 0 }
     : { scale: 0.92, opacity: 0 };
@@ -116,7 +114,7 @@ export const Window: React.FC<WindowProps> = ({ id, children }) => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[300] bg-panel flex flex-col w-full h-full border-2 border-slate"
+            className="fixed inset-0 z-[200] bg-panel flex flex-col w-full h-full border-2 border-slate"
             onClick={() => focusWindow(id)}
           >
             {/* Mobile Sheet Header */}
@@ -223,6 +221,35 @@ export const Window: React.FC<WindowProps> = ({ id, children }) => {
           <div className="flex-1 overflow-y-auto p-4 bg-panel text-textDim font-body">
             {children}
           </div>
+
+          {/* Resize Handle — bottom-right corner, disabled in maximized state */}
+          {!winState.isMaximized && (
+            <div
+              onPointerDown={(e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startW = winState.size.width;
+                const startH = winState.size.height;
+                const onMove = (mv: PointerEvent) => {
+                  const newW = Math.max(320, startW + mv.clientX - startX);
+                  const newH = Math.max(240, startH + mv.clientY - startY);
+                  updateSize(id, { width: newW, height: newH });
+                };
+                const onUp = () => {
+                  window.removeEventListener('pointermove', onMove);
+                  window.removeEventListener('pointerup', onUp);
+                };
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+              }}
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize select-none"
+              style={{
+                background: 'linear-gradient(135deg, transparent 50%, #B0B3BC 50%)',
+              }}
+              aria-label="Resize window"
+            />
+          )}
         </motion.div>
       )}
     </AnimatePresence>

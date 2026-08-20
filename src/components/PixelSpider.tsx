@@ -135,7 +135,7 @@ export const PixelSpider: React.FC<PixelSpiderProps> = ({
           onError={(e) => {
             (e.target as HTMLImageElement).src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 32 32"><rect width="32" height="32" fill="none"/><circle cx="16" cy="14" r="10" fill="%230B0B10" stroke="%23212CF4" stroke-width="1.5"/><ellipse cx="12" cy="13" rx="3" ry="4" fill="%23FFFFFF"/><ellipse cx="20" cy="13" rx="3" ry="4" fill="%23FFFFFF"/><path d="M 12 6 Q 16 10 20 6" stroke="%23212CF4" stroke-width="1" fill="none"/><rect x="10" y="24" width="12" height="6" fill="%230B0B10" rx="2"/></svg>`;
           }}
-          className="w-16 h-16 md:w-32 md:h-32 object-contain pixel-art drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform"
+          className="w-24 h-24 md:w-32 md:h-32 object-contain pixel-art drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform"
         />
       </motion.div>
     </div>

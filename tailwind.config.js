@@ -22,7 +22,7 @@ module.exports = {
       },
       fontFamily: {
         pixel: ['"PixelAE"', '"Press Start 2P"', 'monospace'],
-        body:  ['Geist', 'Inter', 'sans-serif'],
+        body:  ['var(--font-body)', 'Inter', 'sans-serif'],
         mono:  ['"JetBrains Mono"', 'monospace'],
       },
       spacing: {
