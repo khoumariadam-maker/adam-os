@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useMascot, WALLPAPERS } from '@/context/MascotContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -14,7 +15,7 @@ interface ContextMenuProps {
   onOpenPalette: () => void;
 }
 
-const row = 'w-full flex items-center justify-between gap-3 px-3 py-1.5 text-start hover:bg-spidey focus-visible:bg-spidey focus-visible:outline-none';
+const row = 'w-full flex items-center justify-between gap-3 px-3 py-1.5 text-start hover:bg-spidey hover:text-onAccent focus-visible:bg-spidey focus-visible:text-onAccent focus-visible:outline-none';
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, onOpenPalette }) => {
   const { openWindow, minimizeAll } = useWindowManager();
@@ -82,7 +83,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, onOpenP
             {WALLPAPERS.map((w) => (
               <button key={w} role="menuitem" onClick={act(() => changeWallpaper(w))} className={row}>
                 <span className="capitalize">{w.replace('-', ' ')}</span>
-                {activeWallpaper === w && <span aria-hidden="true">✓</span>}
+                {activeWallpaper === w && <PixelIcon name="check" />}
               </button>
             ))}
           </div>

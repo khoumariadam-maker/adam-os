@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { motion, useReducedMotion } from 'framer-motion';
 
 interface SpeechBubbleProps {
@@ -68,7 +69,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ text, onDismiss, aut
             aria-label="Dismiss message"
             className="text-lavender hover:text-text font-pixel text-[10px] -mt-1 -mr-1 w-6 h-6 shrink-0"
           >
-            ✕
+            <PixelIcon name="close" />
           </button>
         )}
       </div>

@@ -940,7 +940,7 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
   return (
     <Window id="terminal">
       <div
-        className="win9x-box-recessed bg-base p-4 min-h-[320px] h-full font-mono text-xs text-green flex flex-col justify-between cursor-text"
+        className="theme-dark win9x-box-recessed bg-base p-4 min-h-[320px] h-full font-mono text-xs text-green flex flex-col justify-between cursor-text"
         onClick={focusInput}
       >
         <div ref={outputRef} className="space-y-3 overflow-y-auto max-h-[360px] pr-2 select-text" aria-live="polite">

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useCallback, useState, useEffect } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
 import { StartMenu } from './StartMenu';
 import { APPS, WindowId } from '@/lib/apps';
+import type { IconName } from '@/lib/pixel-icons';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { asset } from '@/lib/asset';
 
@@ -42,11 +44,11 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
   };
 
   if (isMobile) {
-    const navItems: Array<{ id: WindowId | 'home'; label: string; glyph: string }> = [
-      { id: 'home', label: t.taskbar.home, glyph: '⌂' },
-      { id: 'projects', label: t.taskbar.projects, glyph: '🛠' },
-      { id: 'downloads', label: t.taskbar.cv, glyph: '📄' },
-      { id: 'contact', label: t.taskbar.contact, glyph: '✉' },
+    const navItems: Array<{ id: WindowId | 'home'; label: string; glyph: IconName }> = [
+      { id: 'home', label: t.taskbar.home, glyph: 'desktop' },
+      { id: 'projects', label: t.taskbar.projects, glyph: 'projects' },
+      { id: 'downloads', label: t.taskbar.cv, glyph: 'resume' },
+      { id: 'contact', label: t.taskbar.contact, glyph: 'contact' },
     ];
     const noneVisible = !Object.values(windows).some((w) => w.isOpen && !w.isMinimized);
 
@@ -71,10 +73,10 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
               }}
               aria-current={isActive ? 'page' : undefined}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 font-pixel text-[10px] ${
-                isActive ? 'text-text bg-panel shadow-[inset_0_2px_0_#212CF4]' : 'text-lavender'
+                isActive ? 'text-text bg-panel shadow-[inset_0_2px_0_rgb(var(--c-spidey))]' : 'text-lavender'
               }`}
             >
-              <span className="text-base leading-none" aria-hidden="true">{item.glyph}</span>
+              <PixelIcon name={item.glyph} size={20} />
               <span className="truncate max-w-full px-1">{item.label}</span>
             </button>
           );
@@ -84,7 +86,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
           aria-label="Toggle language"
           className="w-14 flex flex-col items-center justify-center gap-0.5 font-pixel text-[10px] text-yellow border-s border-slate/40"
         >
-          <span className="text-base leading-none" aria-hidden="true">🌐</span>
+          <PixelIcon name="language" size={20} />
           {lang === 'en' ? 'AR' : 'EN'}
         </button>
       </nav>
@@ -100,7 +102,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
       <div
         onPointerDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}
-        className="fixed bottom-0 left-0 right-0 z-[600] h-10 bg-panel2 border-t-2 border-slate shadow-[inset_0_1px_0_#FFFFFF33] flex items-center gap-1.5 px-1.5 select-none"
+        className="fixed bottom-0 left-0 right-0 z-[600] h-10 bg-panel2 border-t-2 border-slate shadow-[inset_0_1px_0_rgb(var(--c-hilite)/0.2)] flex items-center gap-1.5 px-1.5 select-none"
       >
         <button
           onClick={() => {
@@ -109,7 +111,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
           }}
           aria-label="Open Start menu"
           aria-expanded={isStartOpen}
-          className={`win9x-button flex items-center gap-2 px-2.5 h-8 font-pixel text-xs ${isStartOpen ? '!shadow-[inset_1px_1px_0_#0B0B10,inset_-1px_-1px_0_#FFFFFF] bg-panel' : ''}`}
+          className={`win9x-button flex items-center gap-2 px-2.5 h-8 font-pixel text-xs ${isStartOpen ? 'taskbar-pressed' : ''}`}
         >
           <img src={asset('/icons/ui-start.png')} alt="" className="w-4 h-4 pixel-art" />
           <span className="font-bold">{t.taskbar.start}</span>
@@ -121,7 +123,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
           title="Search (Ctrl+K)"
           className="win9x-box-recessed h-8 px-2.5 w-44 xl:w-56 flex items-center gap-2 bg-base text-lavender/80 hover:text-text font-mono text-[11px]"
         >
-          <span aria-hidden="true">🔍</span>
+          <PixelIcon name="search" />
           <span className="flex-1 text-start truncate">{t.taskbar.search}…</span>
           <kbd className="text-[10px] text-slate/80 border border-slate/40 px-1">Ctrl K</kbd>
         </button>
@@ -135,19 +137,20 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
             return (
               <button
                 key={app.id}
+                data-task-id={app.id}
                 onClick={() => handleTabClick(app.id)}
                 aria-label={`${win.title}${win.isMinimized ? ' (minimized)' : ''}`}
                 aria-pressed={isActive}
                 title={win.title}
                 className={`win9x-button flex items-center gap-1.5 px-2 h-8 font-pixel text-[11px] w-40 min-w-[90px] shrink ${
                   isActive
-                    ? '!shadow-[inset_1px_1px_0_#0B0B10,inset_-1px_-1px_0_#FFFFFF] bg-[repeating-conic-gradient(#1f1f2e_0_25%,#26263a_0_50%)] [background-size:4px_4px] text-text'
+                    ? 'taskbar-pressed text-text font-bold'
                     : win.isMinimized
                     ? 'text-lavender/60'
                     : 'text-lavender hover:text-text'
                 }`}
               >
-                <img src={asset(app.icon)} alt="" className="w-4 h-4 pixel-art shrink-0" />
+                <PixelIcon name={app.glyph} className="shrink-0" />
                 <span className="truncate">{win.title}</span>
               </button>
             );
@@ -170,7 +173,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) =
             title={isMuted ? 'Sound off' : 'Sound on'}
             className="px-1 h-6 text-sm hover:bg-panel"
           >
-            {isMuted ? '🔇' : '🔊'}
+            <PixelIcon name={isMuted ? 'sound-off' : 'sound-on'} />
           </button>
           <span
             className="font-mono text-[11px] text-text px-1.5 tabular-nums"

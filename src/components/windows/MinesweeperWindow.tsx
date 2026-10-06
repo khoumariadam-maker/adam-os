@@ -24,8 +24,30 @@ const CONFIGS: Record<Difficulty, { w: number; h: number; mines: number; label: 
 const BEST_KEY = 'adam_os_minesweeper_best';
 const LONG_PRESS_MS = 450;
 
-// Classic Win98 number colours, nudged for legibility on the dark theme.
-const NUMBER_COLORS = ['', '#6C8BFF', '#72FFB4', '#FF3A66', '#A78BFA', '#FF9F43', '#3DD6D0', '#FFFFFF', '#B0B3BC'];
+// Number colours from theme tokens so they read in both themes. Mixing the accent with
+// the text colour lightens it on the dark theme and deepens it on the classic theme.
+const mix = (a: string, b: string, pct: number) => `color-mix(in srgb, rgb(var(--c-${a})) ${pct}%, rgb(var(--c-${b})))`;
+const NUMBER_COLORS = [
+  '',
+  mix('spidey', 'text', 65), // 1
+  'rgb(var(--c-green))', // 2
+  'rgb(var(--c-red))', // 3
+  'rgb(var(--c-lavender))', // 4
+  'rgb(var(--c-yellow))', // 5
+  mix('green', 'spidey', 55), // 6
+  'rgb(var(--c-text))', // 7
+  'rgb(var(--c-slate))', // 8
+];
+
+// Pixel flag drawn with theme colours (crisper and more visible than the emoji).
+const Flag: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 12 12" shapeRendering="crispEdges" aria-hidden>
+    <rect x={2} y={10} width={8} height={1} style={{ fill: 'rgb(var(--c-text))' }} />
+    <rect x={4} y={9} width={4} height={1} style={{ fill: 'rgb(var(--c-text))' }} />
+    <rect x={6} y={2} width={1} height={8} style={{ fill: 'rgb(var(--c-text))' }} />
+    <path d="M7 1 L2 3.5 L7 6 Z" style={{ fill: 'rgb(var(--c-red))' }} />
+  </svg>
+);
 
 const emptyBoard = (w: number, h: number): Cell[] =>
   Array.from({ length: w * h }, () => ({ mine: false, adj: 0, revealed: false, flagged: false }));
@@ -96,8 +118,12 @@ const Led: React.FC<{ value: number; label: string }> = ({ value, label }) => {
     <div
       role="status"
       aria-label={`${label}: ${clamped}`}
-      className="bg-black text-red font-mono font-bold text-xl leading-none px-1.5 py-1 tracking-widest border border-slate/60 shadow-[inset_1px_1px_0_#0B0B10] min-w-[3.6rem] text-center"
-      style={{ textShadow: '0 0 6px rgba(255,58,102,0.75)' }}
+      className="bg-black font-mono font-bold text-xl leading-none px-1.5 py-1 tracking-widest border border-t-shade border-l-shade border-b-hilite border-r-hilite min-w-[3.6rem] text-center"
+      // LED digits stay bright on the black display in both themes.
+      style={{
+        color: 'color-mix(in srgb, rgb(var(--c-red)) 75%, white)',
+        textShadow: '0 0 6px rgb(var(--c-red) / 0.75)',
+      }}
     >
       {text}
     </div>
@@ -412,12 +438,13 @@ export const MinesweeperWindow: React.FC = () => {
                 const shown = c.revealed;
                 const wrongFlag = status === 'lost' && c.flagged && !c.mine;
                 let content: React.ReactNode = null;
-                if (wrongFlag) content = <span className="text-red">✕</span>;
-                else if (c.flagged) content = '🚩';
-                else if (shown && c.mine) content = '🕷';
+                const over = status === 'won' || status === 'lost';
+                if (wrongFlag) content = <span className="text-red font-bold">✕</span>;
+                else if (c.flagged) content = <Flag size={coarse ? 18 : 15} />;
+                else if (shown && c.mine) content = <span aria-hidden>🕷</span>;
                 else if (shown && c.adj > 0)
                   content = (
-                    <span className="font-mono font-bold" style={{ color: NUMBER_COLORS[c.adj] }}>
+                    <span className="font-mono font-bold" style={{ color: NUMBER_COLORS[c.adj], fontWeight: 800 }}>
                       {c.adj}
                     </span>
                   );
@@ -440,8 +467,14 @@ export const MinesweeperWindow: React.FC = () => {
                     style={{ width: cellSize, height: cellSize, fontSize: coarse ? 15 : 13, WebkitTouchCallout: 'none' }}
                     className={`flex items-center justify-center leading-none focus-visible:outline-offset-[-2px] ${
                       shown
-                        ? `border border-slate/25 ${c.exploded ? 'bg-red' : 'bg-base'}`
-                        : 'bg-panel2 shadow-[inset_2px_2px_0_#FFFFFF,inset_-2px_-2px_0_#0B0B10] active:shadow-none active:bg-base'
+                        ? // Opened: flat, sunken grid
+                          `border border-slate/40 ${c.exploded ? 'bg-red' : 'bg-panel'}`
+                        : // Unopened: raised 2px bevel
+                          `bg-panel2 border-2 border-t-hilite border-l-hilite border-b-shade border-r-shade ${
+                            over || c.flagged
+                              ? ''
+                              : 'active:bg-panel active:border-t-shade active:border-l-shade active:border-b-hilite active:border-r-hilite'
+                          }`
                     }`}
                   >
                     {content}

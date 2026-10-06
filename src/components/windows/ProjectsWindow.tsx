@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -26,7 +27,7 @@ const Cover: React.FC<{ project: Project; title: string }> = ({ project, title }
       }}
       aria-hidden="true"
     >
-      <span className="text-5xl md:text-6xl drop-shadow-[3px_3px_0_rgba(0,0,0,0.6)]">{project.glyph}</span>
+      <PixelIcon name={project.icon} size={64} className="drop-shadow-[3px_3px_0_rgba(0,0,0,0.6)]" />
       <p className="font-mono text-[11px] leading-relaxed min-w-0" style={{ color: project.accent }}>
         {project.stack.join(' · ')}
       </p>
@@ -66,13 +67,13 @@ export const ProjectsWindow: React.FC = () => {
                 onClick={() => select(p.id)}
                 aria-current={active ? 'true' : undefined}
                 className={`shrink-0 md:w-full flex items-center gap-2 px-2 py-2 text-start border ${
-                  active ? 'bg-spidey border-lavender/60 text-text' : 'border-transparent hover:bg-panel text-textDim'
+                  active ? 'bg-spidey border-lavender/60 text-onAccent' : 'border-transparent hover:bg-panel text-textDim'
                 }`}
               >
-                <span className="text-lg w-6 text-center" aria-hidden="true">{p.glyph}</span>
+                <PixelIcon name={p.icon} size={24} />
                 <span className="min-w-0">
                   <span className="block font-pixel text-[11px] leading-snug truncate max-w-[180px]">{p.title[lang]}</span>
-                  <span className={`hidden md:block text-[10px] truncate ${active ? 'text-lavender' : 'text-slate/80'}`}>{p.kind[lang]}</span>
+                  <span className={`hidden md:block text-[10px] truncate ${active ? 'text-onAccent/75' : 'text-lavender'}`}>{p.kind[lang]}</span>
                 </span>
               </button>
             );
@@ -136,7 +137,7 @@ export const ProjectsWindow: React.FC = () => {
                 }}
                 className="win9x-button win9x-button-spidey px-3 py-1.5 font-pixel text-[10px]"
               >
-                📡 {ui.openLab}
+                <PixelIcon name="lab" /> {ui.openLab}
               </button>
             )}
             {project.links.map((link) => (
@@ -147,7 +148,7 @@ export const ProjectsWindow: React.FC = () => {
                 rel="noopener noreferrer"
                 className="win9x-button px-3 py-1.5 font-pixel text-[10px] text-text"
               >
-                ↗ {link.label}
+                <PixelIcon name="link" /> {link.label}
               </a>
             ))}
             {PROFILE.github && (
@@ -157,7 +158,7 @@ export const ProjectsWindow: React.FC = () => {
                 rel="noopener noreferrer"
                 className="win9x-button px-3 py-1.5 font-pixel text-[10px] text-text"
               >
-                ↗ {ui.github}
+                <PixelIcon name="github" /> {ui.github}
               </a>
             )}
           </div>

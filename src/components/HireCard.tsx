@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -22,19 +23,19 @@ export const HireCard: React.FC<{ variant: 'desktop' | 'mobile' }> = ({ variant 
   const actions = (
     <div className={`grid gap-1.5 ${variant === 'mobile' ? 'grid-cols-3' : 'grid-cols-1'}`}>
       <button onClick={openCv} className="win9x-button win9x-button-spidey px-2 py-1.5 font-pixel text-[10px] flex items-center justify-center gap-1.5">
-        📄 {t.hire.cv}
+        <PixelIcon name="resume" /> {t.hire.cv}
       </button>
       <a
         href={asset('/resume/')}
         className="win9x-button px-2 py-1.5 font-pixel text-[10px] flex items-center justify-center gap-1.5 text-text"
       >
-        🧾 {t.hire.web}
+        <PixelIcon name="web" /> {t.hire.web}
       </a>
       <a
         href={`mailto:${PROFILE.email}`}
         className="win9x-button px-2 py-1.5 font-pixel text-[10px] flex items-center justify-center gap-1.5 text-text"
       >
-        ✉ {t.hire.email}
+        <PixelIcon name="mail" /> {t.hire.email}
       </a>
     </div>
   );
@@ -59,10 +60,10 @@ export const HireCard: React.FC<{ variant: 'desktop' | 'mobile' }> = ({ variant 
     <aside
       onPointerDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
-      className="absolute top-3 right-3 z-[10] w-60 win9x-box-raised hidden lg:block"
+      className="w-60 win9x-box-raised"
       aria-label="Hiring shortcut"
     >
-      <div className="title-bar-active px-2 py-1 font-pixel text-[11px] text-text flex items-center gap-1.5">
+      <div className="title-bar-active px-2 py-1 font-pixel text-[11px] flex items-center gap-1.5">
         <span className="w-2 h-2 bg-green rounded-full animate-pulse" /> {t.hire.title}
       </div>
       <div className="p-3 space-y-2.5">

@@ -45,6 +45,8 @@ const STR = {
     videoCaption: 'Real build footage of the irrigation rig.',
     mascotPump: 'Soil is dry, pump ON! (simulated)',
     paused: 'PAUSED',
+    ok: 'OK',
+    low: 'Dry soon',
   },
   ar: {
     badge: 'بث محاكى · بيانات تجريبية وليست جهازًا حقيقيًا',
@@ -70,6 +72,8 @@ const STR = {
     videoCaption: 'لقطات حقيقية لبناء نظام الري.',
     mascotPump: 'التربة جافة، المضخة تعمل! (محاكاة)',
     paused: 'متوقف',
+    ok: 'جيدة',
+    low: 'تجف قريبًا',
   },
 } as const;
 
@@ -82,7 +86,7 @@ interface Sim {
   uptime: number;
   rssi: number;
   tick: number;
-  hist: { moisture: number[]; temp: number[]; hum: number[] };
+  hist: { moisture: number[]; temp: number[]; hum: number[]; t: number[] };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -90,6 +94,10 @@ const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const pad = (n: number) => String(n).padStart(2, '0');
 const clock = () => {
   const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+const clockOf = (ms: number) => {
+  const d = new Date(ms);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 const fmtUptime = (s: number) => {
@@ -104,7 +112,8 @@ const initialSim = (): Sim => {
   const temp = rand(24, 29);
   const hum = rand(45, 58);
   // Seed a plausible history so the sparklines are not empty on open.
-  const hist = { moisture: [] as number[], temp: [] as number[], hum: [] as number[] };
+  const hist = { moisture: [] as number[], temp: [] as number[], hum: [] as number[], t: [] as number[] };
+  const now = Date.now();
   let m = moisture + HISTORY * 0.45;
   let t = temp;
   let h = hum;
@@ -115,6 +124,7 @@ const initialSim = (): Sim => {
     hist.moisture.push(m);
     hist.temp.push(t);
     hist.hum.push(h);
+    hist.t.push(now - (HISTORY - 1 - i) * TICK_MS);
   }
   return {
     moisture: m,
@@ -130,41 +140,214 @@ const initialSim = (): Sim => {
 };
 
 // ---------------------------------------------------------------------------
-// Pixel-style stepped sparkline
+// Sparkline: stepped (pixel-style) line + low-opacity area, current-value dot,
+// optional labelled threshold, and a crosshair tooltip (mouse, touch, keyboard).
+// Colours come from CSS variables so the chart follows the active theme.
 // ---------------------------------------------------------------------------
+const CV = (name: string, alpha?: number) =>
+  alpha === undefined ? `rgb(var(--c-${name}))` : `rgb(var(--c-${name}) / ${alpha})`;
+// Accent nudged toward the text colour: lighter on the dark theme, deeper navy on classic.
+const SERIES = 'color-mix(in srgb, rgb(var(--c-spidey)) 65%, rgb(var(--c-text)))';
+
+const CHART_H = 52;
+const PAD_T = 6;
+const PAD_B = 6;
+const PAD_R = 6;
+
+const useWidth = <T extends HTMLElement>() => {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setW(el.clientWidth);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => setW(Math.round(entries[0].contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+};
+
 const Sparkline: React.FC<{
   data: number[];
+  times: number[];
   min: number;
   max: number;
-  color: string;
-  marker?: number;
-}> = ({ data, min, max, color, marker }) => {
-  const W = 120;
-  const H = 32;
-  const step = W / (HISTORY - 1);
-  const y = (v: number) => Math.round(H - 2 - ((clamp(v, min, max) - min) / (max - min)) * (H - 4));
-  let d = '';
+  format: (v: number) => string;
+  label: string;
+  threshold?: { value: number; label: string };
+}> = ({ data, times, min, max, format, label, threshold }) => {
+  const [wrapRef, measured] = useWidth<HTMLDivElement>();
+  const W = measured || 160;
+  const [hover, setHover] = useState<number | null>(null);
+  const touchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (touchTimer.current) clearTimeout(touchTimer.current);
+    },
+    []
+  );
+
+  const n = data.length;
+  const plotW = W - PAD_R;
+  const step = n > 1 ? plotW / (n - 1) : plotW;
+  const xAt = (i: number) => Math.round(i * step);
+  const yAt = (v: number) =>
+    Math.round(CHART_H - PAD_B - ((clamp(v, min, max) - min) / (max - min)) * (CHART_H - PAD_T - PAD_B));
+
+  let line = '';
   data.forEach((v, i) => {
-    const x = Math.round(i * step);
-    const yy = y(v);
-    d += i === 0 ? `M${x} ${yy}` : ` H${x} V${yy}`;
+    const x = xAt(i);
+    const yy = yAt(v);
+    line += i === 0 ? `M${x} ${yy}` : ` H${x} V${yy}`;
   });
+  const baseY = CHART_H - PAD_B;
+  const area = n ? `${line} V${baseY} H0 Z` : '';
+
+  const lo = n ? Math.min(...data) : 0;
+  const hi = n ? Math.max(...data) : 0;
+  const last = n - 1;
+
+  const idxFromX = (clientX: number, rect: DOMRect) =>
+    clamp(Math.round(((clientX - rect.left) / Math.max(1, rect.width - PAD_R)) * (n - 1)), 0, n - 1);
+
+  const onPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!n) return;
+    if (touchTimer.current) {
+      clearTimeout(touchTimer.current);
+      touchTimer.current = null;
+    }
+    setHover(idxFromX(e.clientX, e.currentTarget.getBoundingClientRect()));
+  };
+  const onPointerEnd = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'touch') {
+      // Keep the readout up briefly after the finger lifts.
+      if (touchTimer.current) clearTimeout(touchTimer.current);
+      touchTimer.current = setTimeout(() => {
+        setHover(null);
+        touchTimer.current = null;
+      }, 1500);
+    } else {
+      setHover(null);
+    }
+  };
+  const onKey = (e: React.KeyboardEvent) => {
+    if (!n) return;
+    const cur = hover ?? last;
+    let next: number | null = null;
+    if (e.key === 'ArrowLeft') next = Math.max(0, cur - 1);
+    else if (e.key === 'ArrowRight') next = Math.min(last, cur + 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else if (e.key === 'Escape') {
+      setHover(null);
+      return;
+    }
+    if (next === null) return;
+    e.preventDefault();
+    setHover(next);
+  };
+
+  const hx = hover !== null ? xAt(hover) : 0;
+  const tipLeft = hover !== null ? clamp(hx, 44, Math.max(44, W - 44)) : 0;
+  const thY = threshold ? yAt(threshold.value) : 0;
+
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-8 bg-base border border-slate/40"
-      preserveAspectRatio="none"
-      shapeRendering="crispEdges"
-      aria-hidden="true"
-    >
-      {[0.25, 0.5, 0.75].map((f) => (
-        <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} stroke="#B0B3BC" strokeOpacity={0.12} strokeWidth={1} />
-      ))}
-      {marker !== undefined && (
-        <line x1={0} x2={W} y1={y(marker)} y2={y(marker)} stroke="#FFE55C" strokeDasharray="3 3" strokeWidth={1} />
-      )}
-      <path d={d} fill="none" stroke={color} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="flex flex-col gap-0.5">
+      <div ref={wrapRef} className="relative w-full" dir="ltr">
+        <svg
+          width={W}
+          height={CHART_H}
+          viewBox={`0 0 ${W} ${CHART_H}`}
+          className="block w-full bg-panel border border-slate/40 cursor-crosshair focus-visible:outline focus-visible:outline-2 focus-visible:outline-spidey"
+          style={{ touchAction: 'pan-y' }}
+          role="img"
+          tabIndex={0}
+          aria-label={`${label}: now ${n ? format(data[last]) : '--'}, range ${format(lo)} to ${format(hi)} over the last ${n} seconds. Use arrow keys to inspect.`}
+          onPointerMove={onPointer}
+          onPointerDown={onPointer}
+          onPointerLeave={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onPointerUp={(e) => e.pointerType === 'touch' && onPointerEnd(e)}
+          onKeyDown={onKey}
+          onBlur={() => setHover(null)}
+        >
+          {/* Recessive grid */}
+          {[0.5].map((f) => (
+            <line
+              key={f}
+              x1={0}
+              x2={W}
+              y1={Math.round(PAD_T + (CHART_H - PAD_T - PAD_B) * f) + 0.5}
+              y2={Math.round(PAD_T + (CHART_H - PAD_T - PAD_B) * f) + 0.5}
+              style={{ stroke: CV('slate', 0.18) }}
+              strokeWidth={1}
+            />
+          ))}
+
+          {/* Area + line */}
+          <path d={area} style={{ fill: SERIES, fillOpacity: 0.14 }} />
+          <path d={line} style={{ fill: 'none', stroke: SERIES }} strokeWidth={2} strokeLinejoin="miter" />
+
+          {/* Threshold */}
+          {threshold && (
+            <g>
+              <line
+                x1={0}
+                x2={W}
+                y1={thY + 0.5}
+                y2={thY + 0.5}
+                style={{ stroke: CV('yellow') }}
+                strokeDasharray="4 3"
+                strokeWidth={1}
+              />
+              <text
+                x={4}
+                y={thY > PAD_T + 10 ? thY - 3 : thY + 10}
+                fontSize={9}
+                fontFamily="var(--font-mono), monospace"
+                style={{ fill: CV('text'), stroke: CV('panel'), strokeWidth: 3, paintOrder: 'stroke' }}
+              >
+                {threshold.label}
+              </text>
+            </g>
+          )}
+
+          {/* Crosshair */}
+          {hover !== null && (
+            <g>
+              <line x1={hx + 0.5} x2={hx + 0.5} y1={0} y2={CHART_H} style={{ stroke: CV('text', 0.55) }} strokeWidth={1} />
+              <circle cx={hx} cy={yAt(data[hover])} r={4} style={{ fill: SERIES, stroke: CV('panel') }} strokeWidth={2} />
+            </g>
+          )}
+
+          {/* Current value */}
+          {n > 0 && hover === null && (
+            <circle cx={xAt(last)} cy={yAt(data[last])} r={4} style={{ fill: SERIES, stroke: CV('panel') }} strokeWidth={2} />
+          )}
+        </svg>
+
+        {hover !== null && (
+          <div
+            className="pointer-events-none absolute -top-1 -translate-x-1/2 -translate-y-full z-10 win9x-box-raised bg-panel2 px-1.5 py-0.5 whitespace-nowrap font-mono leading-tight"
+            style={{ left: tipLeft }}
+            role="status"
+          >
+            <span className="text-[12px] font-bold text-text">{format(data[hover])}</span>{' '}
+            <span className="text-[10px] text-lavender">{times[hover] ? clockOf(times[hover]) : ''}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex justify-between font-mono text-[9px] text-lavender" dir="ltr" aria-hidden>
+        <span>-{Math.max(0, n - 1)}s</span>
+        <span>
+          lo {format(lo)} · hi {format(hi)}
+        </span>
+        <span>now</span>
+      </div>
+    </div>
   );
 };
 
@@ -172,12 +355,27 @@ const Sparkline: React.FC<{
 // Wiring diagram
 // ---------------------------------------------------------------------------
 const WiringDiagram: React.FC = () => {
+  // Theme colours (CSS variables) so the diagram reads on both the dark and classic themes.
+  const C = {
+    vcc: CV('red'),
+    gnd: CV('slate'),
+    soil: CV('green'),
+    dht: CV('yellow'),
+    relay: SERIES,
+    pin: CV('yellow'),
+    board: CV('panel2'),
+    chip: CV('base'),
+    edge: CV('slate'),
+    accent: CV('spidey'),
+    text: CV('text'),
+    label: CV('lavender'),
+  };
   const espPins = [
-    { label: '3V3', y: 40, color: '#FF3A66' },
-    { label: 'GND', y: 70, color: '#B0B3BC' },
-    { label: 'GPIO34', y: 110, color: '#72FFB4' },
-    { label: 'GPIO4', y: 140, color: '#FFE55C' },
-    { label: 'GPIO26', y: 180, color: '#C3C6ED' },
+    { label: '3V3', y: 40, color: C.vcc },
+    { label: 'GND', y: 70, color: C.gnd },
+    { label: 'GPIO34', y: 110, color: C.soil },
+    { label: 'GPIO4', y: 140, color: C.dht },
+    { label: 'GPIO26', y: 180, color: C.relay },
   ];
   const modules = [
     { name: 'SOIL (cap.)', y: 20, h: 60, pins: [['VCC', 35], ['GND', 50], ['AOUT', 65]] as [string, number][] },
@@ -186,8 +384,13 @@ const WiringDiagram: React.FC = () => {
   ];
   const vcc = 150;
   const gnd = 170;
-  const wire = { fill: 'none', strokeWidth: 3, strokeLinecap: 'square' as const };
-  const dot = (x: number, yy: number, c: string) => <rect x={x - 3} y={yy - 3} width={6} height={6} fill={c} />;
+  const wire = (stroke: string, strokeWidth = 3) => ({
+    style: { fill: 'none', stroke },
+    strokeWidth,
+    strokeLinecap: 'square' as const,
+  });
+  const fill = (f: string, stroke?: string) => ({ style: stroke ? { fill: f, stroke } : { fill: f } });
+  const dot = (x: number, yy: number, c: string) => <rect x={x - 3} y={yy - 3} width={6} height={6} {...fill(c)} />;
 
   return (
     <svg
@@ -199,49 +402,49 @@ const WiringDiagram: React.FC = () => {
       fontFamily='"PixelAE","Press Start 2P",monospace'
     >
       {/* ESP32 board */}
-      <rect x={10} y={20} width={100} height={185} fill="#1f1f2e" stroke="#B0B3BC" strokeWidth={2} />
-      <rect x={30} y={30} width={50} height={26} fill="#0B0B10" stroke="#212CF4" strokeWidth={2} />
-      <text x={55} y={47} fill="#C3C6ED" fontSize={7} textAnchor="middle">WROOM</text>
-      <text x={20} y={200} fill="#FFFFFF" fontSize={8}>ESP32</text>
+      <rect x={10} y={20} width={100} height={185} {...fill(C.board, C.edge)} strokeWidth={2} />
+      <rect x={30} y={30} width={50} height={26} {...fill(C.chip, C.accent)} strokeWidth={2} />
+      <text x={55} y={47} {...fill(C.label)} fontSize={7} textAnchor="middle">WROOM</text>
+      <text x={20} y={200} {...fill(C.text)} fontSize={8}>ESP32</text>
       {espPins.map((p) => (
         <g key={p.label}>
-          <rect x={104} y={p.y - 3} width={8} height={6} fill="#FFE55C" />
-          <text x={100} y={p.y + 3} fill={p.color} fontSize={7} textAnchor="end">{p.label}</text>
+          <rect x={104} y={p.y - 3} width={8} height={6} {...fill(C.pin)} />
+          <text x={100} y={p.y + 3} {...fill(p.color)} fontSize={7} textAnchor="end">{p.label}</text>
         </g>
       ))}
 
       {/* Power buses */}
-      <path d={`M112 40 H${vcc} M${vcc} 35 V172`} stroke="#FF3A66" {...wire} />
-      <path d={`M112 70 H${gnd} M${gnd} 50 V187`} stroke="#B0B3BC" {...wire} />
-      {dot(vcc, 40, '#FF3A66')}
-      {dot(gnd, 70, '#B0B3BC')}
+      <path d={`M112 40 H${vcc} M${vcc} 35 V172`} {...wire(C.vcc)} />
+      <path d={`M112 70 H${gnd} M${gnd} 50 V187`} {...wire(C.gnd)} />
+      {dot(vcc, 40, C.vcc)}
+      {dot(gnd, 70, C.gnd)}
       {[35, 105, 172].map((yy) => (
         <g key={`v${yy}`}>
-          <path d={`M${vcc} ${yy} H230`} stroke="#FF3A66" {...wire} strokeWidth={2} />
-          {dot(vcc, yy, '#FF3A66')}
+          <path d={`M${vcc} ${yy} H230`} {...wire(C.vcc, 2)} />
+          {dot(vcc, yy, C.vcc)}
         </g>
       ))}
       {[50, 135, 187].map((yy) => (
         <g key={`g${yy}`}>
-          <path d={`M${gnd} ${yy} H230`} stroke="#B0B3BC" {...wire} strokeWidth={2} />
-          {dot(gnd, yy, '#B0B3BC')}
+          <path d={`M${gnd} ${yy} H230`} {...wire(C.gnd, 2)} />
+          {dot(gnd, yy, C.gnd)}
         </g>
       ))}
 
       {/* Signal lines */}
-      <path d="M112 110 H190 V65 H230" stroke="#72FFB4" {...wire} />
-      <path d="M112 140 H200 V120 H230" stroke="#FFE55C" {...wire} />
-      <path d="M112 180 H210 V202 H230" stroke="#C3C6ED" {...wire} />
+      <path d="M112 110 H190 V65 H230" {...wire(C.soil)} />
+      <path d="M112 140 H200 V120 H230" {...wire(C.dht)} />
+      <path d="M112 180 H210 V202 H230" {...wire(C.relay)} />
 
       {/* Modules */}
       {modules.map((m) => (
         <g key={m.name}>
-          <rect x={232} y={m.y} width={118} height={m.h} fill="#171722" stroke="#B0B3BC" strokeWidth={2} />
-          <text x={340} y={m.y + 14} fill="#FFFFFF" fontSize={7} textAnchor="end">{m.name}</text>
+          <rect x={232} y={m.y} width={118} height={m.h} {...fill(C.board, C.edge)} strokeWidth={2} />
+          <text x={340} y={m.y + 14} {...fill(C.text)} fontSize={7} textAnchor="end">{m.name}</text>
           {m.pins.map(([label, py]) => (
             <g key={label}>
-              <rect x={228} y={py - 3} width={8} height={6} fill="#FFE55C" />
-              <text x={242} y={py + 3} fill="#C3C6ED" fontSize={7}>{label}</text>
+              <rect x={228} y={py - 3} width={8} height={6} {...fill(C.pin)} />
+              <text x={242} y={py + 3} {...fill(C.label)} fontSize={7}>{label}</text>
             </g>
           ))}
         </g>
@@ -364,6 +567,8 @@ export const LabWindow: React.FC = () => {
         arr.push(v);
         if (arr.length > HISTORY) arr.shift();
       }
+      sim.hist.t.push(Date.now());
+      if (sim.hist.t.length > HISTORY) sim.hist.t.shift();
 
       if (sim.tick % 5 === 0) {
         pushLog(
@@ -443,19 +648,42 @@ export const LabWindow: React.FC = () => {
     </button>
   );
 
+  const soilStatus = sim.pump
+    ? { text: `💧 ${s.pump} ${s.on}`, cls: 'text-green border-green bg-green/10' }
+    : sim.moisture < threshold + 5
+    ? { text: `⚠ ${s.low}`, cls: 'text-yellow border-yellow bg-yellow/10' }
+    : { text: `✓ ${s.ok}`, cls: 'text-lavender border-slate/50' };
+
   const tiles = [
     {
       key: 'moisture' as const,
       label: s.soil,
       value: `${Math.round(sim.moisture)}%`,
-      color: sim.pump ? '#72FFB4' : sim.moisture < threshold + 5 ? '#FFE55C' : '#C3C6ED',
+      format: (v: number) => `${Math.round(v)}%`,
       min: 0,
       max: 100,
-      marker: threshold,
-      sub: `${s.threshold} ${threshold}%`,
+      threshold: { value: threshold, label: `${s.threshold} ${threshold}%` },
+      sub: 'GPIO34',
+      status: soilStatus,
     },
-    { key: 'temp' as const, label: s.temp, value: `${sim.temp.toFixed(1)}°C`, color: '#FF3A66', min: 15, max: 40, sub: 'DHT22' },
-    { key: 'hum' as const, label: s.hum, value: `${Math.round(sim.hum)}%`, color: '#212CF4', min: 20, max: 90, sub: 'DHT22' },
+    {
+      key: 'temp' as const,
+      label: s.temp,
+      value: `${sim.temp.toFixed(1)}°C`,
+      format: (v: number) => `${v.toFixed(1)}°C`,
+      min: 15,
+      max: 40,
+      sub: 'DHT22',
+    },
+    {
+      key: 'hum' as const,
+      label: s.hum,
+      value: `${Math.round(sim.hum)}%`,
+      format: (v: number) => `${Math.round(v)}%`,
+      min: 20,
+      max: 90,
+      sub: 'DHT22',
+    },
   ];
 
   return (
@@ -474,10 +702,10 @@ export const LabWindow: React.FC = () => {
             Wi-Fi: <span className="text-green">{sim.rssi} dBm</span>
           </span>
           <span
-            className={`ms-auto bg-yellow text-[#0B0B10] px-2 py-1 border-2 border-base ${px} text-[9px] leading-tight`}
+            className={`ms-auto bg-yellow/15 text-text px-2 py-1 border-2 border-yellow ${px} text-[9px] leading-tight`}
             role="note"
           >
-            ⚠ {s.badge}
+            <span className="text-yellow" aria-hidden>⚠</span> {s.badge}
           </span>
         </div>
 
@@ -504,12 +732,29 @@ export const LabWindow: React.FC = () => {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className={`${px} text-[10px] text-lavender`}>{t.label}</span>
-                      <span className="font-mono text-[10px] text-slate">{t.sub}</span>
+                      <span className="font-mono text-[10px] text-lavender/80" dir="ltr">
+                        {t.sub}
+                      </span>
                     </div>
-                    <div className="font-mono text-xl text-text" dir="ltr">
-                      {t.value}
+                    <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                      <span className="font-mono text-2xl font-bold text-text leading-none" dir="ltr">
+                        {t.value}
+                      </span>
+                      {'status' in t && t.status && (
+                        <span className={`${px} text-[9px] px-1.5 py-0.5 border ${t.status.cls}`} role="status">
+                          {t.status.text}
+                        </span>
+                      )}
                     </div>
-                    <Sparkline data={sim.hist[t.key]} min={t.min} max={t.max} color={t.color} marker={t.marker} />
+                    <Sparkline
+                      data={sim.hist[t.key]}
+                      times={sim.hist.t}
+                      min={t.min}
+                      max={t.max}
+                      format={t.format}
+                      label={t.label}
+                      threshold={'threshold' in t ? t.threshold : undefined}
+                    />
                   </div>
                 );
               })}
@@ -555,7 +800,7 @@ export const LabWindow: React.FC = () => {
             </div>
 
             {/* Serial monitor */}
-            <div className="win9x-box-recessed bg-base border border-slate/40">
+            <div className="win9x-box-recessed bg-panel border border-slate/40">
               <div className="flex items-center justify-between px-2 py-1 border-b border-slate/30">
                 <span className={`${px} text-[9px] text-lavender`}>{s.serial}</span>
                 {!running && <span className={`${px} text-[9px] text-yellow`}>{s.paused}</span>}
@@ -583,7 +828,7 @@ export const LabWindow: React.FC = () => {
 
         {tab === 'wiring' && (
           <div className="flex flex-col gap-3">
-            <div className="win9x-box-recessed bg-base p-3 border border-slate/40" dir="ltr">
+            <div className="win9x-box-recessed bg-panel p-3 border border-slate/40" dir="ltr">
               <WiringDiagram />
             </div>
             <p className="text-xs text-lavender leading-relaxed">{s.wiringNote}</p>
@@ -599,7 +844,7 @@ export const LabWindow: React.FC = () => {
                   controls
                   preload="metadata"
                   playsInline
-                  className="w-full max-h-[320px] bg-base border-2 border-slate"
+                  className="w-full max-h-[320px] bg-shade border-2 border-slate"
                   onError={() => setVideoFailed(true)}
                 />
                 <p className="text-xs text-lavender">{s.videoCaption}</p>

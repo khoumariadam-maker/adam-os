@@ -8,21 +8,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        base:     '#0B0B10',  // page background, deepest layer
-        panel:    '#171722',  // window body, cards
-        panel2:   '#1f1f2e',  // title bars, secondary surfaces
-        spidey:   '#212CF4',  // cobalt blue — primary accent
-        text:     '#FFFFFF',  // headings, primary text
-        textDim:  '#E1E2E7',  // body text
-        lavender: '#C3C6ED',  // labels, captions, halftone dots
-        green:    '#72FFB4',  // success, online, confirm
-        red:      '#FF3A66',  // error, close button, danger
-        yellow:   '#FFE55C',  // warning, minimize, highlight
-        slate:    '#B0B3BC',  // borders, disabled, dividers
+        // Theme tokens are CSS variables (RGB channels) so the whole OS can switch themes.
+        // See :root and [data-theme='classic'] in src/app/globals.css.
+        base:     'rgb(var(--c-base) / <alpha-value>)',      // desktop / deepest layer
+        panel:    'rgb(var(--c-panel) / <alpha-value>)',     // window body, cards
+        panel2:   'rgb(var(--c-panel2) / <alpha-value>)',    // secondary surfaces
+        spidey:   'rgb(var(--c-spidey) / <alpha-value>)',    // primary accent
+        text:     'rgb(var(--c-text) / <alpha-value>)',      // headings, primary text
+        textDim:  'rgb(var(--c-text-dim) / <alpha-value>)',  // body text
+        lavender: 'rgb(var(--c-lavender) / <alpha-value>)',  // labels, captions
+        green:    'rgb(var(--c-green) / <alpha-value>)',     // success, online
+        red:      'rgb(var(--c-red) / <alpha-value>)',       // error, danger
+        yellow:   'rgb(var(--c-yellow) / <alpha-value>)',    // warning, highlight
+        slate:    'rgb(var(--c-slate) / <alpha-value>)',     // borders, dividers
+        onAccent: 'rgb(var(--c-on-accent) / <alpha-value>)', // text on spidey/title bars
+        hilite:   'rgb(var(--c-hilite) / <alpha-value>)',    // bevel light edge
+        shade:    'rgb(var(--c-shade) / <alpha-value>)',     // bevel dark edge
       },
+
       fontFamily: {
-        pixel: ['var(--font-pixel)', 'monospace'],
-        body:  ['var(--font-body)', 'Inter', 'sans-serif'],
+        // Stacks switch to Arabic faces when <html lang="ar"> (see globals.css).
+        pixel: ['var(--stack-pixel)'],
+        body:  ['var(--stack-body)'],
         mono:  ['var(--font-mono)', 'monospace'],
       },
       spacing: {

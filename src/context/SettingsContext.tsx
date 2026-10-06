@@ -3,14 +3,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { readJSON, writeStorage } from '@/lib/storage';
 
+export type ThemeName = 'dark' | 'classic';
+
 export interface Settings {
+  theme: ThemeName;
   crtBloom: boolean;
   scanlines: number; // 0-100
   screensaver: boolean;
+  liveWallpaper: boolean;
   customCursor: boolean;
 }
 
-const DEFAULTS: Settings = { crtBloom: false, scanlines: 30, screensaver: true, customCursor: true };
+const DEFAULTS: Settings = { theme: 'dark', crtBloom: false, scanlines: 30, screensaver: true, liveWallpaper: true, customCursor: true };
 const KEY = 'adam_os_settings';
 
 interface SettingsContextType {
@@ -30,6 +34,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     document.documentElement.style.setProperty('--scanline-opacity', String(settings.scanlines / 100));
   }, [settings.scanlines]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', settings.theme === 'classic' ? '#008080' : '#0B0B10');
+  }, [settings.theme]);
 
   const updateSettings = (changes: Partial<Settings>) => {
     setSettings((prev) => {

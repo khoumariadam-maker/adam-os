@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
+import type { IconName } from '@/lib/pixel-icons';
 
 type L10n = { en: string; ar: string };
 
 interface SkillGroup {
-  glyph: string;
+  glyph: IconName;
   title: L10n;
   skills: Array<{ name: string; usedIn: L10n }>;
 }
@@ -15,7 +17,7 @@ interface SkillGroup {
 // No self-rated percentages: every skill points at where it was actually used.
 const GROUPS: SkillGroup[] = [
   {
-    glyph: '⚡',
+    glyph: 'chip',
     title: { en: 'Embedded & Hardware', ar: 'الأنظمة المدمجة والعتاد' },
     skills: [
       { name: 'ESP32', usedIn: { en: 'Smart Irrigation · Race Challenge cars', ar: 'الري الذكي · سيارات تحدي السباق' } },
@@ -26,7 +28,7 @@ const GROUPS: SkillGroup[] = [
     ],
   },
   {
-    glyph: '🧩',
+    glyph: 'skills',
     title: { en: 'Software', ar: 'البرمجيات' },
     skills: [
       { name: 'React / Next.js', usedIn: { en: 'School management software · this site', ar: 'برنامج تسيير المدارس · هذا الموقع' } },
@@ -36,7 +38,7 @@ const GROUPS: SkillGroup[] = [
     ],
   },
   {
-    glyph: '☁',
+    glyph: 'web',
     title: { en: 'Cloud & Systems', ar: 'السحابة والأنظمة' },
     skills: [
       { name: 'Firebase', usedIn: { en: 'Real-time sensor data for Smart Irrigation', ar: 'بيانات المستشعرات الآنية للري الذكي' } },
@@ -46,7 +48,7 @@ const GROUPS: SkillGroup[] = [
     ],
   },
   {
-    glyph: '🤖',
+    glyph: 'spider',
     title: { en: 'AI', ar: 'الذكاء الاصطناعي' },
     skills: [
       { name: 'Agentic workflows', usedIn: { en: 'Multi-agent dev team', ar: 'فريق تطوير متعدد الوكلاء' } },
@@ -55,7 +57,7 @@ const GROUPS: SkillGroup[] = [
     ],
   },
   {
-    glyph: '🎓',
+    glyph: 'star',
     title: { en: 'People', ar: 'العمل مع الناس' },
     skills: [
       { name: 'Teaching', usedIn: { en: 'Robotics instructor · CLS Bouira', ar: 'مدرّب روبوتيك · CLS البويرة' } },
@@ -87,7 +89,7 @@ export const SkillsWindow: React.FC = () => {
           {GROUPS.map((group) => (
             <section key={group.title.en} className="win9x-box-recessed p-3 space-y-2">
               <h3 className="flex items-center gap-2 font-pixel text-xs text-text border-b border-slate/30 pb-1.5">
-                <span aria-hidden="true">{group.glyph}</span>
+                <PixelIcon name={group.glyph} />
                 {group.title[lang]}
               </h3>
               <ul className="space-y-1.5">
@@ -103,7 +105,7 @@ export const SkillsWindow: React.FC = () => {
 
           <section className="win9x-box-recessed p-3 space-y-2">
             <h3 className="flex items-center gap-2 font-pixel text-xs text-text border-b border-slate/30 pb-1.5">
-              <span aria-hidden="true">🌐</span>
+              <PixelIcon name="language" />
               {lang === 'ar' ? 'اللغات' : 'Languages'}
             </h3>
             <ul className="space-y-1.5">

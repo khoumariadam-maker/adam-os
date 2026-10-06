@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
 import { useMascot, WALLPAPERS } from '@/context/MascotContext';
+import { useSettings } from '@/context/SettingsContext';
 import { APPS } from '@/lib/apps';
+import type { IconName } from '@/lib/pixel-icons';
 import { PROFILE } from '@/lib/profile';
 import { asset } from '@/lib/asset';
 
@@ -21,7 +24,7 @@ interface Command {
   id: string;
   label: string;
   hint: string;
-  glyph: string;
+  glyph: IconName;
   section: 'apps' | 'actions';
   keywords: string;
   run: () => void;
@@ -38,6 +41,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
   const { t, toggleLanguage, lang } = useLanguage();
   const { toggleSound, isMuted, playClick, playWindowOpen } = useSound();
   const { changeWallpaper } = useMascot();
+  const { settings, updateSettings } = useSettings();
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,29 +80,37 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
       },
     }));
     const actions: Command[] = [
-      { id: 'cv-en', label: 'Download résumé (English PDF)', hint: 'PDF', glyph: '⬇', keywords: 'cv resume pdf english download', run: () => navigate(asset(PROFILE.resumes.en.path), true) },
-      { id: 'cv-ar', label: 'Download résumé (Arabic PDF)', hint: 'PDF', glyph: '⬇', keywords: 'cv resume pdf arabic download عربي', run: () => navigate(asset(PROFILE.resumes.ar.path), true) },
-      { id: 'cv-web', label: 'Open plain web résumé', hint: '/resume', glyph: '🧾', keywords: 'cv resume plain recruiter html', run: () => navigate(asset('/resume/')) },
-      { id: 'email', label: `Email ${PROFILE.email}`, hint: 'mailto', glyph: '✉', keywords: 'email contact mail hire', run: () => navigate(`mailto:${PROFILE.email}`) },
+      { id: 'cv-en', label: 'Download résumé (English PDF)', hint: 'PDF', glyph: 'download' as IconName, keywords: 'cv resume pdf english download', run: () => navigate(asset(PROFILE.resumes.en.path), true) },
+      { id: 'cv-ar', label: 'Download résumé (Arabic PDF)', hint: 'PDF', glyph: 'download' as IconName, keywords: 'cv resume pdf arabic download عربي', run: () => navigate(asset(PROFILE.resumes.ar.path), true) },
+      { id: 'cv-web', label: 'Open plain web résumé', hint: '/resume', glyph: 'resume' as IconName, keywords: 'cv resume plain recruiter html', run: () => navigate(asset('/resume/')) },
+      { id: 'email', label: `Email ${PROFILE.email}`, hint: 'mailto', glyph: 'mail' as IconName, keywords: 'email contact mail hire', run: () => navigate(`mailto:${PROFILE.email}`) },
       ...(PROFILE.github
-        ? [{ id: 'github', label: 'Open GitHub profile', hint: 'github.com', glyph: '🐙', keywords: 'github code repos source', run: () => navigate(PROFILE.github, true) }]
+        ? [{ id: 'github', label: 'Open GitHub profile', hint: 'github.com', glyph: 'github' as IconName, keywords: 'github code repos source', run: () => navigate(PROFILE.github, true) }]
         : []),
-      { id: 'lang', label: lang === 'en' ? 'Switch to Arabic (العربية)' : 'Switch to English', hint: 'language', glyph: '🌐', keywords: 'language arabic english rtl translate', run: toggleLanguage },
-      { id: 'sound', label: isMuted ? 'Turn sound on' : 'Turn sound off', hint: 'audio', glyph: isMuted ? '🔊' : '🔇', keywords: 'sound audio mute volume', run: toggleSound },
-      { id: 'desktop', label: 'Show desktop (minimize all)', hint: 'windows', glyph: '▭', keywords: 'show desktop minimize all clear', run: minimizeAll },
+      { id: 'lang', label: lang === 'en' ? 'Switch to Arabic (العربية)' : 'Switch to English', hint: 'language', glyph: 'language' as IconName, keywords: 'language arabic english rtl translate', run: toggleLanguage },
+      { id: 'sound', label: isMuted ? 'Turn sound on' : 'Turn sound off', hint: 'audio', glyph: (isMuted ? 'sound-on' : 'sound-off') as IconName, keywords: 'sound audio mute volume', run: toggleSound },
+      {
+        id: 'theme',
+        label: settings.theme === 'classic' ? 'Theme: Spider Night (dark)' : 'Theme: Windows 98 (classic)',
+        hint: 'theme',
+        glyph: 'paint' as IconName,
+        keywords: 'theme classic dark light win98 grey gray silver appearance',
+        run: () => updateSettings({ theme: settings.theme === 'classic' ? 'dark' : 'classic' }),
+      },
+      { id: 'desktop', label: 'Show desktop (minimize all)', hint: 'windows', glyph: 'desktop' as IconName, keywords: 'show desktop minimize all clear', run: minimizeAll },
       ...WALLPAPERS.map((w) => ({
         id: `wp-${w}`,
         label: `Wallpaper: ${w.replace('-', ' ')}`,
         hint: 'wallpaper',
-        glyph: '🖼',
+        glyph: 'image' as IconName,
         keywords: `wallpaper background theme ${w}`,
         run: () => changeWallpaper(w),
       })),
-      { id: 'reboot', label: 'Restart Adam OS (replay boot)', hint: 'system', glyph: '↻', keywords: 'reboot restart boot', run: () => onReboot?.() },
-      { id: 'shutdown', label: 'Shut down', hint: 'system', glyph: '⏻', keywords: 'shutdown power off', run: onShutdown },
+      { id: 'reboot', label: 'Restart Adam OS (replay boot)', hint: 'system', glyph: 'restart' as IconName, keywords: 'reboot restart boot', run: () => onReboot?.() },
+      { id: 'shutdown', label: 'Shut down', hint: 'system', glyph: 'power' as IconName, keywords: 'shutdown power off', run: onShutdown },
     ].map((c) => ({ ...c, section: 'actions' as const }));
     return [...apps, ...actions];
-  }, [openWindow, minimizeAll, toggleLanguage, toggleSound, isMuted, lang, changeWallpaper, onReboot, onShutdown, playWindowOpen]);
+  }, [openWindow, minimizeAll, toggleLanguage, toggleSound, isMuted, lang, changeWallpaper, onReboot, onShutdown, playWindowOpen, settings.theme, updateSettings]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -172,9 +184,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
             aria-label="Search apps and actions"
             className="w-full max-w-lg win9x-box-raised window-active-shadow"
           >
-            <div className="title-bar-active px-2 py-1 font-pixel text-[11px] text-text flex justify-between">
+            <div className="title-bar-active px-2 py-1 font-pixel text-[11px] flex justify-between">
               <span>Run…</span>
-              <span className="text-lavender">Esc</span>
+              <span className="opacity-75">Esc</span>
             </div>
             <div className="p-2 border-b-2 border-slate/40 bg-panel">
               <input
@@ -211,12 +223,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
                       onPointerMove={() => setCursor(i)}
                       onClick={() => runCommand(cmd)}
                       className={`flex items-center gap-3 px-2 py-1.5 cursor-pointer text-sm ${
-                        i === cursor ? 'bg-spidey text-text' : 'text-textDim'
+                        i === cursor ? 'bg-spidey text-onAccent' : 'text-textDim'
                       }`}
                     >
-                      <span className="w-6 text-center font-mono text-xs shrink-0">{cmd.glyph}</span>
+                      <span className="w-6 flex justify-center shrink-0">
+                        <PixelIcon name={cmd.glyph} />
+                      </span>
                       <span className="flex-1 truncate">{cmd.label}</span>
-                      <span className={`font-mono text-[10px] ${i === cursor ? 'text-lavender' : 'text-slate/70'}`}>{cmd.hint}</span>
+                      <span className={`font-mono text-[10px] ${i === cursor ? 'text-onAccent/75' : 'text-slate'}`}>{cmd.hint}</span>
                     </li>
                   </React.Fragment>
                 );

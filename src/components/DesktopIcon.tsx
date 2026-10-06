@@ -41,16 +41,31 @@ export const DesktopIcon: React.FC<DesktopIconProps> = ({ id, label, iconSrc, is
           src={asset(iconSrc)}
           alt=""
           draggable={false}
-          className={`w-full h-full object-contain pixel-art drop-shadow-[2px_2px_0_rgba(0,0,0,0.7)] transition-transform group-hover:-translate-y-0.5 ${
-            isSelected ? 'brightness-75 [filter:drop-shadow(2px_2px_0_rgba(0,0,0,0.7))_sepia(1)_hue-rotate(190deg)_saturate(5)]' : ''
-          }`}
+          className="w-full h-full object-contain pixel-art drop-shadow-[2px_2px_0_rgba(0,0,0,0.7)] transition-transform group-hover:-translate-y-0.5"
         />
+        {/* Win98 selection: a dithered accent tint clipped to the icon's own shape */}
+        {isSelected && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-spidey/60 pointer-events-none"
+            style={{
+              maskImage: `url(${asset(iconSrc)})`,
+              WebkitMaskImage: `url(${asset(iconSrc)})`,
+              maskSize: 'contain',
+              WebkitMaskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskRepeat: 'no-repeat',
+              maskPosition: 'center',
+              WebkitMaskPosition: 'center',
+            }}
+          />
+        )}
       </span>
       <span
         className={`icon-label font-pixel leading-tight text-center px-1 line-clamp-2 ${
           label.length > 9 ? 'text-[10px] tracking-tight' : 'text-[11px]'
         } ${
-          isSelected ? 'bg-spidey text-text outline-dotted outline-1 outline-lavender' : 'text-text'
+          isSelected ? 'bg-spidey text-onAccent outline-dotted outline-1 outline-lavender' : 'text-white'
         }`}
       >
         {label}

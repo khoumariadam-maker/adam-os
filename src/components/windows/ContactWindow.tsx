@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -52,22 +53,22 @@ export const ContactWindow: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[13px] text-green select-text break-all flex-1 min-w-[180px]">{PROFILE.email}</span>
             <button onClick={copyEmail} className="win9x-button px-2.5 py-1 font-pixel text-[10px]" aria-live="polite">
-              {copied ? `✓ ${t.contact.copied}` : `⧉ ${t.contact.copy}`}
+              <PixelIcon name={copied ? 'check' : 'copy'} /> {copied ? t.contact.copied : t.contact.copy}
             </button>
             <a href={`mailto:${PROFILE.email}`} className="win9x-button win9x-button-spidey px-2.5 py-1 font-pixel text-[10px]">
-              ✉ {t.contact.email_btn}
+              <PixelIcon name="mail" /> {t.contact.email_btn}
             </a>
           </div>
           {(PROFILE.github || PROFILE.linkedin) && (
             <div className="flex flex-wrap gap-2 border-t border-slate/30 pt-3">
               {PROFILE.github && (
                 <a href={PROFILE.github} target="_blank" rel="noopener noreferrer" className="win9x-button px-2.5 py-1 font-pixel text-[10px] text-text">
-                  ↗ {t.contact.github}
+                  <PixelIcon name="github" /> {t.contact.github}
                 </a>
               )}
               {PROFILE.linkedin && (
                 <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className="win9x-button px-2.5 py-1 font-pixel text-[10px] text-text">
-                  ↗ {t.contact.linkedin}
+                  <PixelIcon name="link" /> {t.contact.linkedin}
                 </a>
               )}
             </div>
@@ -93,7 +94,7 @@ export const ContactWindow: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] text-lavender/80 flex-1 min-w-[180px]">{t.contact.send_hint}</p>
             <button type="submit" className="win9x-button win9x-button-spidey px-3 py-1.5 font-pixel text-[10px]">
-              ➤ {t.contact.send}
+              <PixelIcon name="send" /> {t.contact.send}
             </button>
           </div>
         </form>

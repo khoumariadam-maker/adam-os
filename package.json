@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "npx serve@14 out",
     "typecheck": "tsc --noEmit",
-    "compress-assets": "node scripts/compress-assets.mjs"
+    "compress-assets": "node scripts/compress-assets.mjs",
+    "test:visual": "playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -18,6 +19,7 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/node": "^20.17.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

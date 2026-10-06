@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -87,13 +88,13 @@ export const AboutWindow: React.FC = () => {
             <p className="text-[13px] text-lavender">{t.about.role}</p>
             <div className="flex flex-wrap gap-1.5 pt-1">
               <button onClick={() => go('projects')} className="win9x-button win9x-button-spidey px-2.5 py-1 font-pixel text-[10px]">
-                🛠 {lang === 'ar' ? 'المشاريع' : 'Projects'}
+                <PixelIcon name="projects" /> {lang === 'ar' ? 'المشاريع' : 'Projects'}
               </button>
               <button onClick={() => go('downloads')} className="win9x-button px-2.5 py-1 font-pixel text-[10px]">
-                📄 {lang === 'ar' ? 'السيرة' : 'Résumé'}
+                <PixelIcon name="resume" /> {lang === 'ar' ? 'السيرة' : 'Résumé'}
               </button>
               <button onClick={() => go('contact')} className="win9x-button px-2.5 py-1 font-pixel text-[10px]">
-                ✉ {lang === 'ar' ? 'تواصل' : 'Contact'}
+                <PixelIcon name="contact" /> {lang === 'ar' ? 'تواصل' : 'Contact'}
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSound } from '@/context/SoundContext';
 import { readStorage, writeStorage } from '@/lib/storage';
@@ -46,7 +47,7 @@ export const SoundToast: React.FC = () => {
         >
           {/* Icon + label */}
           <div className="flex items-center gap-2">
-            <span className="text-2xl select-none">🔊</span>
+            <PixelIcon name="sound-on" size={32} />
             <p className="font-pixel text-[10px] text-text leading-snug">
               Enable OS sounds?
             </p>
@@ -63,14 +64,14 @@ export const SoundToast: React.FC = () => {
               className="win9x-button win9x-button-spidey flex-1 py-2 font-pixel text-[10px] text-text"
               aria-label="Enable sounds"
             >
-              YES 🔊
+              <PixelIcon name="sound-on" /> YES
             </button>
             <button
               onClick={handleDismiss}
               className="win9x-button flex-1 py-2 font-pixel text-[10px] text-lavender hover:text-text"
               aria-label="Keep sounds muted"
             >
-              NO 🔇
+              <PixelIcon name="sound-off" /> NO
             </button>
           </div>
         </motion.div>

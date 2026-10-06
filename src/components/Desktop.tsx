@@ -7,6 +7,7 @@ import { PixelSpider } from './PixelSpider';
 import { ContextMenu } from './ContextMenu';
 import { CommandPalette } from './CommandPalette';
 import { HireCard } from './HireCard';
+import { WallpaperFx } from './WallpaperFx';
 import { AboutWindow } from './windows/AboutWindow';
 import { ProjectsWindow } from './windows/ProjectsWindow';
 import { SkillsWindow } from './windows/SkillsWindow';
@@ -15,6 +16,8 @@ import { TerminalWindow } from './windows/TerminalWindow';
 import { JukeboxWindow } from './windows/JukeboxWindow';
 import { DownloadsWindow } from './windows/DownloadsWindow';
 import { ContactWindow } from './windows/ContactWindow';
+import { GitHubWindow } from './windows/GitHubWindow';
+import { GitHubWidget } from './GitHubWidget';
 import { SpiderSnakeWindow } from './windows/SpiderSnakeWindow';
 import { MinesweeperWindow } from './windows/MinesweeperWindow';
 import { ControlPanelWindow } from './windows/ControlPanelWindow';
@@ -122,7 +125,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
 
   if (isShutdown) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-8 text-center font-pixel text-text crt-scanlines">
+      <div className="theme-dark fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-8 text-center font-pixel text-text crt-scanlines">
         <div className="space-y-6 max-w-md">
           <p className="text-[#FF9F43] text-base md:text-lg leading-relaxed">{t.shutdown.message}</p>
           <button
@@ -154,8 +157,10 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
         src={asset(`/wallpapers/${mascot.activeWallpaper}-16x9.jpg`)}
         alt=""
         draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pixel-art pointer-events-none opacity-60"
+        className="absolute inset-0 w-full h-full object-cover pixel-art pointer-events-none"
+        style={{ opacity: 'var(--desktop-tint)' }}
       />
+      <WallpaperFx wallpaper={mascot.activeWallpaper} enabled={settings.liveWallpaper && settings.theme === 'dark'} />
       <div className="absolute inset-0 desktop-vignette pointer-events-none" />
       <div className="absolute inset-0 bg-halftone bg-halftone-overlay bg-halftone-animate pointer-events-none" />
       {settings.crtBloom && <div className="crt-bloom-overlay" />}
@@ -197,7 +202,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
       </div>
       </div>
 
-      {!isMobile && <HireCard variant="desktop" />}
+      {!isMobile && (
+        <div className="absolute top-3 right-3 z-[10] hidden lg:flex flex-col gap-3 w-60" onPointerDown={(e) => e.stopPropagation()}>
+          <HireCard variant="desktop" />
+          <GitHubWidget />
+        </div>
+      )}
 
       {marquee && (
         <div
@@ -219,6 +229,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
       <PaintWindow />
       <DownloadsWindow onTriggerTheater={handleTriggerTheater} />
       <ContactWindow />
+      <GitHubWindow />
 
       <PixelSpider />
 

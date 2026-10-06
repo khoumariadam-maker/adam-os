@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Reem_Kufi, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import localFont from 'next/font/local';
 import { PROFILE } from '@/lib/profile';
 import './globals.css';
@@ -14,6 +14,26 @@ const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
+});
+
+// Arabic faces load only the Arabic subset (unicode-range), so they sit first in the font stacks
+// and Latin text falls through to Inter / the pixel font. No metric fallback, so nothing shadows Latin.
+const arabicDisplay = Reem_Kufi({
+  subsets: ['arabic'],
+  weight: ['600', '700'],
+  variable: '--font-arabic-display',
+  display: 'swap',
+  adjustFontFallback: false,
+  fallback: [],
+});
+
+const arabicBody = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-arabic',
+  display: 'swap',
+  adjustFontFallback: false,
+  fallback: [],
 });
 
 const pixel = localFont({
@@ -66,7 +86,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${mono.variable} ${pixel.variable} antialiased bg-base text-text`}>
+      <body className={`${inter.variable} ${mono.variable} ${pixel.variable} ${arabicDisplay.variable} ${arabicBody.variable} antialiased bg-base text-text`}>
         {children}
       </body>
     </html>

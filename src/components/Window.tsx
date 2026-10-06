@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useWindowManager, WindowId, TASKBAR_HEIGHT, clampPosition } from '@/context/WindowManagerContext';
 import { useSound } from '@/context/SoundContext';
 import { useMascot } from '@/context/MascotContext';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import { asset } from '@/lib/asset';
+import { APP_BY_ID } from '@/lib/apps';
 
 interface WindowProps {
   id: WindowId;
@@ -16,6 +17,25 @@ interface WindowProps {
 }
 
 type Snap = 'left' | 'right' | 'max' | null;
+type Zoom = { zoom: boolean; dx: number; dy: number; reduce: boolean };
+
+const centerOf = (selector: string) => {
+  const el = typeof document === 'undefined' ? null : document.querySelector(selector);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+};
+
+// Win98-style zoom: windows grow out of their icon / taskbar button and shrink back into it.
+const windowVariants = {
+  hidden: (z: Zoom) =>
+    z.reduce
+      ? { opacity: 0 }
+      : z.zoom
+      ? { opacity: 0, scale: 0.1, x: z.dx, y: z.dy }
+      : { opacity: 0, scale: 0.94, x: 0, y: 8 },
+  shown: { opacity: 1, scale: 1, x: 0, y: 0 },
+};
 const SNAP_EDGE = 6;
 const MIN_W = 300;
 const MIN_H = 220;
@@ -150,12 +170,7 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
   };
 
   const iconImg = (
-    <img
-      src={asset(winState.icon)}
-      alt=""
-      className="w-4 h-4 pixel-art shrink-0"
-      draggable={false}
-    />
+    <PixelIcon name={APP_BY_ID[id].glyph} className="shrink-0" />
   );
 
   // Phone layout: full-height sheet above the bottom tab bar.
@@ -187,14 +202,14 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
               </button>
               <div className="flex items-center gap-2 min-w-0">
                 {iconImg}
-                <h2 id={titleId} className="font-pixel text-xs text-text truncate">{winState.title}</h2>
+                <h2 id={titleId} className="font-pixel text-xs truncate">{winState.title}</h2>
               </div>
               <button
                 onClick={handleClose}
                 className="win9x-button bg-red text-text w-10 h-10 flex items-center justify-center text-base"
                 aria-label="Close window"
               >
-                ✕
+                <PixelIcon name="close" />
               </button>
             </header>
             <div className={`flex-1 overflow-y-auto overscroll-contain bg-panel text-textDim font-body ${flush ? '' : 'p-4'}`}>
@@ -207,6 +222,16 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
   }
 
   const maximized = winState.isMaximized;
+  const winCenter = maximized
+    ? { x: (typeof window === 'undefined' ? 0 : window.innerWidth) / 2, y: (typeof window === 'undefined' ? 0 : window.innerHeight - TASKBAR_HEIGHT) / 2 }
+    : { x: winState.position.x + winState.size.width / 2, y: winState.position.y + winState.size.height / 2 };
+  const zoomTo = (target: { x: number; y: number } | null): Zoom =>
+    target
+      ? { zoom: true, dx: target.x - winCenter.x, dy: target.y - winCenter.y, reduce: !!shouldReduceMotion }
+      : { zoom: false, dx: 0, dy: 0, reduce: !!shouldReduceMotion };
+  // Opening: from the taskbar button (restore) or the desktop icon. Hiding: into the taskbar when minimized.
+  const enterZoom = zoomTo(centerOf(`[data-task-id="${id}"]`) ?? centerOf(`[data-icon-id="${id}"]`));
+  const exitZoom = zoomTo(winState.isOpen && winState.isMinimized ? centerOf(`[data-task-id="${id}"]`) : null);
   const frameStyle: React.CSSProperties = maximized
     ? { left: 0, top: 0, width: '100vw', height: `calc(100vh - ${TASKBAR_HEIGHT}px)` }
     : {
@@ -230,18 +255,20 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
           }}
         />
       )}
-      <AnimatePresence>
+      <AnimatePresence custom={exitZoom}>
         {isVisible && (
           <motion.section
             key={`desktop-${id}`}
+            custom={enterZoom}
+            variants={windowVariants}
             ref={containerRef}
             tabIndex={-1}
             role="dialog"
             aria-labelledby={titleId}
-            initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.94, opacity: 0, y: 8 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.94, opacity: 0, y: 8 }}
-            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+            initial="hidden"
+            animate="shown"
+            exit="hidden"
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
             onPointerDownCapture={() => focusWindow(id)}
             style={{ ...frameStyle, zIndex: winState.zIndex, position: 'absolute' }}
             className={`win9x-box-raised flex flex-col outline-none ${
@@ -257,7 +284,7 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
               }}
               className={`px-2 py-1 flex items-center justify-between select-none touch-none ${
                 maximized ? '' : 'cursor-grab active:cursor-grabbing'
-              } ${isActive ? 'title-bar-active text-text' : 'title-bar-inactive text-lavender'}`}
+              } ${isActive ? 'title-bar-active' : 'title-bar-inactive'}`}
             >
               <div className="flex items-center gap-2 overflow-hidden">
                 {iconImg}
@@ -273,7 +300,7 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
                   aria-label="Minimize window"
                   title="Minimize"
                 >
-                  _
+                  <PixelIcon name="minimize" />
                 </button>
                 <button
                   onClick={handleMaximize}
@@ -281,7 +308,7 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
                   aria-label={maximized ? 'Restore window' : 'Maximize window'}
                   title={maximized ? 'Restore' : 'Maximize'}
                 >
-                  {maximized ? '❐' : '□'}
+                  <PixelIcon name={maximized ? 'restore' : 'maximize'} />
                 </button>
                 <button
                   onClick={handleClose}
@@ -289,7 +316,7 @@ export const Window: React.FC<WindowProps> = ({ id, children, flush = false }) =
                   aria-label="Close window"
                   title="Close (Esc)"
                 >
-                  ✕
+                  <PixelIcon name="close" />
                 </button>
               </div>
             </header>

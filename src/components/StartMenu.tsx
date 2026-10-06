@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { PixelIcon } from '@/components/PixelIcon';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -16,7 +17,7 @@ interface StartMenuProps {
 }
 
 const itemClass =
-  'w-full flex items-center gap-2.5 px-2.5 py-1.5 text-start hover:bg-spidey focus-visible:bg-spidey focus-visible:outline-none';
+  'w-full flex items-center gap-2.5 px-2.5 py-1.5 text-start hover:bg-spidey hover:text-onAccent focus-visible:bg-spidey focus-visible:text-onAccent focus-visible:outline-none';
 
 export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdown, onOpenPalette }) => {
   const { openWindow } = useWindowManager();
@@ -69,9 +70,9 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
       onPointerDown={(e) => e.stopPropagation()}
       className="fixed bottom-10 left-1 z-[900] w-72 win9x-box-raised window-active-shadow flex"
     >
-      <div className="w-8 bg-gradient-to-t from-spidey to-[#0a0f6b] flex items-end justify-center pb-3">
-        <span className="font-pixel text-sm text-text tracking-widest [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
-          ADAM<span className="text-lavender">OS</span> 98
+      <div className="w-8 bg-gradient-to-t from-spidey to-spidey/40 flex items-end justify-center pb-3">
+        <span className="font-pixel text-sm text-onAccent tracking-widest [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+          ADAM<span className="opacity-70">OS</span> 98
         </span>
       </div>
 
@@ -89,7 +90,7 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
             <p className="px-2.5 pt-1 pb-0.5 text-[9px] uppercase tracking-widest text-lavender/70">{group.label}</p>
             {APPS.filter((a) => a.group === group.key).map((app) => (
               <button key={app.id} role="menuitem" onClick={() => handleOpen(app.id)} className={itemClass}>
-                <img src={asset(app.icon)} alt="" className="w-4 h-4 pixel-art" />
+                <PixelIcon name={app.glyph} />
                 {app.title}
               </button>
             ))}
@@ -98,7 +99,7 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
 
         <div className="my-1 border-t border-slate/40" />
         <a role="menuitem" href={asset('/resume/')} className={itemClass}>
-          <span className="w-4 text-center">🧾</span> {t.startmenu.web_resume}
+          <PixelIcon name="web" /> {t.startmenu.web_resume}
         </a>
         <button
           role="menuitem"
@@ -108,7 +109,7 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
           }}
           className={itemClass}
         >
-          <span className="w-4 text-center">🔍</span> {t.startmenu.run}
+          <PixelIcon name="search" /> {t.startmenu.run}
         </button>
         <div className="my-1 border-t border-slate/40" />
         <button
@@ -121,7 +122,7 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
           }}
           className={`${itemClass} text-red hover:!bg-red hover:text-text`}
         >
-          <span className="w-4 text-center">⏻</span> {t.startmenu.shutdown}
+          <PixelIcon name="power" /> {t.startmenu.shutdown}
         </button>
       </div>
     </div>

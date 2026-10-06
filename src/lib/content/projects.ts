@@ -3,11 +3,14 @@
 // To add a photo: put it in public/projects/<id>.jpg (≈1200x675) and set `image: '/projects/<id>.jpg'`.
 // To add links: fill `links` with { label, href } (GitHub repo, demo video, live site...).
 
+import type { IconName } from '@/lib/pixel-icons';
+
 type L10n = { en: string; ar: string };
 
 export interface Project {
   id: string;
-  glyph: string;
+  // Pixel icon shown on the generated cover and in the list.
+  icon: IconName;
   accent: string;
   title: L10n;
   tagline: L10n;
@@ -25,7 +28,7 @@ export interface Project {
 export const PROJECTS: Project[] = [
   {
     id: 'smart-irrigation',
-    glyph: '🌱',
+    icon: 'lab',
     accent: '#72FFB4',
     title: { en: 'Smart Irrigation', ar: 'نظام الري الذكي' },
     tagline: {
@@ -61,7 +64,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'race-challenge',
-    glyph: '🏎',
+    icon: 'chip',
     accent: '#FFE55C',
     title: { en: 'Race Challenge — ESP32 Robot Cars', ar: 'تحدي السباق — سيارات ESP32 الروبوتية' },
     tagline: {
@@ -96,7 +99,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'rpi-selfhost',
-    glyph: '🖥',
+    icon: 'desktop',
     accent: '#C3C6ED',
     title: { en: 'Raspberry Pi Self-Host', ar: 'خادم Raspberry Pi ذاتي الاستضافة' },
     tagline: {
@@ -129,7 +132,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'agentic-dev-team',
-    glyph: '🤖',
+    icon: 'spider',
     accent: '#212CF4',
     title: { en: 'Agentic Dev Team', ar: 'فريق تطوير من الوكلاء الأذكياء' },
     tagline: {
@@ -162,7 +165,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'school-erp',
-    glyph: '🏫',
+    icon: 'calendar',
     accent: '#FF3A66',
     title: { en: 'School Management Software', ar: 'برنامج تسيير المدارس' },
     tagline: {

@@ -95,7 +95,7 @@ export const ExplorerWindow: React.FC = () => {
                   key={dir}
                   onClick={() => handleSelectDir(dir)}
                   className={`w-full text-left px-2 py-1 flex items-center gap-1.5 ${
-                    isSelected ? 'bg-spidey text-text font-bold' : 'hover:bg-panel text-textDim'
+                    isSelected ? 'bg-spidey text-onAccent font-bold' : 'hover:bg-panel text-textDim'
                   }`}
                 >
                   <span>📁</span>

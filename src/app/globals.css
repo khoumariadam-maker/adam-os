@@ -2,19 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-base: #0B0B10;
-  --bg-panel: #171722;
-  --bg-panel2: #1f1f2e;
-  --accent-spidey: #212CF4;
-  --text-primary: #FFFFFF;
-  --text-dim: #E1E2E7;
-  --lavender: #C3C6ED;
-  --green: #72FFB4;
-  --red: #FF3A66;
-  --yellow: #FFE55C;
-  --slate: #B0B3BC;
+/* .theme-dark keeps a subtree dark in any theme (terminal screens, boot, screensaver). */
+:root,
+.theme-dark {
+  /* Theme tokens as RGB channels (used by Tailwind as rgb(var(--c-x) / alpha)). */
+  --c-base: 11 11 16;
+  --c-panel: 23 23 34;
+  --c-panel2: 31 31 46;
+  --c-spidey: 33 44 244;
+  --c-text: 255 255 255;
+  --c-text-dim: 225 226 231;
+  --c-lavender: 195 198 237;
+  --c-green: 114 255 180;
+  --c-red: 255 58 102;
+  --c-yellow: 255 229 92;
+  --c-slate: 176 179 188;
+  --c-on-accent: 255 255 255;
+  --c-hilite: 255 255 255;
+  --c-shade: 11 11 16;
+  --c-icon-line: 150 154 190;
+  --title-active: linear-gradient(90deg, #121a9c 0%, rgb(var(--c-spidey)) 55%, #5e66ff 100%);
+  --title-inactive: linear-gradient(90deg, #2a2a3c 0%, #3a3b52 100%);
+  --title-inactive-text: 195 198 237;
+  --desktop-tint: 0.6;
   --scanline-opacity: 0.3;
+}
+
+/* Classic theme: the real Windows 98 look — silver chrome, navy title bars, black text. */
+[data-theme='classic'] {
+  --c-base: 0 128 128;
+  --c-panel: 192 192 192;
+  --c-panel2: 212 208 200;
+  --c-spidey: 0 0 128;
+  --c-text: 0 0 0;
+  --c-text-dim: 24 24 24;
+  --c-lavender: 64 64 96;
+  --c-green: 0 112 48;
+  --c-red: 176 0 32;
+  --c-yellow: 128 80 0;
+  --c-slate: 128 128 128;
+  --c-on-accent: 255 255 255;
+  --c-hilite: 255 255 255;
+  --c-shade: 64 64 64;
+  --c-icon-line: 0 0 0;
+  --title-active: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  --title-inactive: linear-gradient(90deg, #808080 0%, #b5b5b5 100%);
+  --title-inactive-text: 212 208 200;
+  --desktop-tint: 0.18;
 }
 
 * {
@@ -41,7 +75,18 @@
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
-  font-family: var(--font-body), 'Inter', sans-serif;
+  font-family: var(--stack-body);
+}
+
+/* Font stacks live on body, where next/font defines the --font-* variables. */
+body {
+  --stack-pixel: var(--font-pixel), monospace;
+  --stack-body: var(--font-body), 'Inter', sans-serif;
+}
+
+html[lang='ar'] body {
+  --stack-pixel: var(--font-arabic-display), var(--font-pixel), monospace;
+  --stack-body: var(--font-arabic), var(--font-body), sans-serif;
 }
 
 /* Pixel art rendering enforcement */
@@ -52,8 +97,8 @@ body {
 
 /* Halftone background pattern */
 .bg-halftone {
-  background-color: #0B0B10;
-  background-image: radial-gradient(#C3C6ED 1.5px, transparent 1.5px);
+  background-color: rgb(var(--c-base));
+  background-image: radial-gradient(rgb(var(--c-lavender)) 1.5px, transparent 1.5px);
   background-size: 18px 18px;
   background-position: 0 0;
 }
@@ -79,89 +124,89 @@ body {
 
 /* Radial cobalt desktop glow */
 .bg-cobalt-glow {
-  background: radial-gradient(circle at 50% 50%, rgba(33, 44, 244, 0.12) 0%, transparent 65%);
+  background: radial-gradient(circle at 50% 50%, rgb(var(--c-spidey) / 0.12) 0%, transparent 65%);
 }
 
 /* Windows 9x Bevels */
 .win9x-box-raised {
-  background-color: #171722;
-  border: 2px solid #B0B3BC;
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+  background-color: rgb(var(--c-panel));
+  border: 2px solid rgb(var(--c-slate));
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade));
 }
 
 .win9x-box-recessed {
-  background-color: #1f1f2e;
-  border: 1px solid #B0B3BC;
-  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+  background-color: rgb(var(--c-panel2));
+  border: 1px solid rgb(var(--c-slate));
+  box-shadow: inset -1px -1px 0 rgb(var(--c-hilite)), inset 1px 1px 0 rgb(var(--c-shade));
 }
 
 .win9x-button {
-  background-color: #1f1f2e;
-  border: 1px solid #B0B3BC;
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
-  color: #FFFFFF;
+  background-color: rgb(var(--c-panel2));
+  border: 1px solid rgb(var(--c-slate));
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade));
+  color: rgb(var(--c-text));
   transition: all 0.05s ease;
 }
 
 .win9x-button:hover {
-  background-color: #1f1f2e;
-  /* panel2 token — was unlocked #2a2a3e */
-  filter: brightness(1.15);
+  filter: brightness(1.12);
 }
 
 .win9x-button:active {
-  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+  box-shadow: inset -1px -1px 0 rgb(var(--c-hilite)), inset 1px 1px 0 rgb(var(--c-shade));
   transform: translate(1px, 1px);
 }
 
 .win9x-button-spidey {
-  background-color: #212CF4;
-  border: 1px solid #B0B3BC;
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
-  color: #FFFFFF;
+  background-color: rgb(var(--c-spidey));
+  border: 1px solid rgb(var(--c-slate));
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade));
+  color: rgb(var(--c-on-accent));
 }
 
 .win9x-button-spidey:active {
-  box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #0B0B10;
+  box-shadow: inset -1px -1px 0 rgb(var(--c-hilite)), inset 1px 1px 0 rgb(var(--c-shade));
 }
 
 /* Window shadows: active windows float above the rest */
 .window-active-shadow {
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10,
-    6px 6px 0 rgba(0, 0, 0, 0.55), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(33, 44, 244, 0.35);
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade)),
+    6px 6px 0 rgba(0, 0, 0, 0.55), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgb(var(--c-spidey) / 0.35);
 }
 
 .window-inactive-shadow {
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10, 4px 4px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade)), 4px 4px 0 rgba(0, 0, 0, 0.4);
   filter: saturate(0.85);
 }
 
 /* Win98 title bars: cobalt gradient when focused, muted when not */
 .title-bar-active {
-  background: linear-gradient(90deg, #121a9c 0%, #212CF4 55%, #5e66ff 100%);
+  background: var(--title-active);
+  color: rgb(var(--c-on-accent));
 }
 
 .title-bar-inactive {
-  background: linear-gradient(90deg, #2a2a3c 0%, #3a3b52 100%);
+  background: var(--title-inactive);
+  color: rgb(var(--title-inactive-text));
 }
 
 /* Diagonal resize grip */
 .resize-grip {
   background:
-    linear-gradient(135deg, transparent 0 55%, #B0B3BC 55% 62%, transparent 62% 72%, #B0B3BC 72% 79%, transparent 79%);
+    linear-gradient(135deg, transparent 0 55%, rgb(var(--c-slate)) 55% 62%, transparent 62% 72%, rgb(var(--c-slate)) 72% 79%, transparent 79%);
 }
 
 /* Desktop rubber-band selection */
 .marquee {
-  border: 1px dotted #C3C6ED;
-  background: rgba(33, 44, 244, 0.18);
+  border: 1px dotted rgb(var(--c-lavender));
+  background: rgb(var(--c-spidey) / 0.18);
 }
 
 /* Soft vignette over the wallpaper so icons and windows stay readable */
 .desktop-vignette {
   background:
-    radial-gradient(ellipse at 50% 40%, transparent 35%, rgba(11, 11, 16, 0.75) 100%),
-    linear-gradient(180deg, rgba(11, 11, 16, 0.25), rgba(11, 11, 16, 0.55));
+    radial-gradient(ellipse at 50% 40%, transparent 35%, rgb(var(--c-base) / 0.75) 100%),
+    linear-gradient(180deg, rgb(var(--c-base) / 0.25), rgb(var(--c-base) / 0.55));
 }
 
 /* Desktop icon label: Win98 dotted focus + readable shadow */
@@ -171,7 +216,7 @@ body {
 
 /* 9x Focus outline — spidey accent, 2px offset per spec */
 :focus-visible:not([tabindex="-1"]) {
-  outline: 2px solid #212CF4;
+  outline: 2px solid rgb(var(--c-spidey));
   outline-offset: 2px;
 }
 
@@ -190,19 +235,19 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #1f1f2e;
-  border: 1px solid #B0B3BC;
-  box-shadow: inset 1px 1px 0 #0B0B10;
+  background-color: rgb(var(--c-panel2));
+  border: 1px solid rgb(var(--c-slate));
+  box-shadow: inset 1px 1px 0 rgb(var(--c-shade));
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #171722;
-  border: 1px solid #B0B3BC;
-  box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #0B0B10;
+  background-color: rgb(var(--c-panel));
+  border: 1px solid rgb(var(--c-slate));
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #1f1f2e;
+  background-color: rgb(var(--c-panel2));
   /* panel2 token */
   filter: brightness(1.2);
 }
@@ -310,4 +355,23 @@ html:has(.os-shell) body {
   overflow: hidden;
   height: 100%;
   overscroll-behavior: none;
+}
+
+/* Classic theme: flat teal desktop like the real thing */
+[data-theme='classic'] .desktop-vignette,
+[data-theme='classic'] .bg-halftone-overlay {
+  display: none;
+}
+
+[data-theme='classic'] .window-active-shadow,
+[data-theme='classic'] .window-inactive-shadow {
+  box-shadow: inset 1px 1px 0 rgb(var(--c-hilite)), inset -1px -1px 0 rgb(var(--c-shade)), 2px 2px 0 rgba(0, 0, 0, 0.35);
+  filter: none;
+}
+
+/* Pressed-in taskbar button (active window / open Start menu), with the classic checker dither */
+.taskbar-pressed {
+  box-shadow: inset 1px 1px 0 rgb(var(--c-shade)), inset -1px -1px 0 rgb(var(--c-hilite)) !important;
+  background-image: repeating-conic-gradient(rgb(var(--c-panel2)) 0 25%, rgb(var(--c-hilite) / 0.18) 0 50%);
+  background-size: 2px 2px;
 }
