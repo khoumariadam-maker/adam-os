@@ -21,9 +21,9 @@ module.exports = {
         slate:    '#B0B3BC',  // borders, disabled, dividers
       },
       fontFamily: {
-        pixel: ['"PixelAE"', '"Press Start 2P"', 'monospace'],
+        pixel: ['var(--font-pixel)', 'monospace'],
         body:  ['var(--font-body)', 'Inter', 'sans-serif'],
-        mono:  ['"JetBrains Mono"', 'monospace'],
+        mono:  ['var(--font-mono)', 'monospace'],
       },
       spacing: {
         px: '2px',   // hairline borders

@@ -1,205 +1,193 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useWindowManager, WindowId } from '@/context/WindowManagerContext';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
 import { StartMenu } from './StartMenu';
-import { useMascot } from '@/context/MascotContext';
-import type { SpiderFrame } from '@/components/PixelSpider';
+import { APPS, WindowId } from '@/lib/apps';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { asset } from '@/lib/asset';
 
 interface TaskbarProps {
   onShutdown: () => void;
+  onOpenPalette: () => void;
 }
 
-export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown }) => {
-  const { windows, activeWindowId, openWindow, focusWindow, minimizeWindow } = useWindowManager();
-  const { lang, toggleLanguage, t } = useLanguage();
-  const { isMuted, toggleSound, playClick } = useSound();
-  const mascot = useMascot();
-
-  const [isStartOpen, setIsStartOpen] = useState<boolean>(false);
-  const [timeStr, setTimeStr] = useState<string>('');
-  const [isMobile, setIsMobile] = useState<boolean>(false);
-
+const useClock = () => {
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTimeStr(
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 10000);
+    setNow(new Date());
+    const interval = setInterval(() => setNow(new Date()), 15000);
     return () => clearInterval(interval);
   }, []);
+  return now;
+};
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const handleStartToggle = () => {
-    playClick();
-    setIsStartOpen((prev) => !prev);
-  };
+export const Taskbar: React.FC<TaskbarProps> = ({ onShutdown, onOpenPalette }) => {
+  const { windows, activeWindowId, openWindow, focusWindow, minimizeWindow, minimizeAll } = useWindowManager();
+  const { lang, toggleLanguage, t } = useLanguage();
+  const { isMuted, toggleSound, playClick } = useSound();
+  const isMobile = useIsMobile();
+  const now = useClock();
+  const [isStartOpen, setIsStartOpen] = useState<boolean>(false);
+  const closeStart = useCallback(() => setIsStartOpen(false), []);
 
   const handleTabClick = (id: WindowId) => {
     playClick();
     const win = windows[id];
-    if (!win.isOpen) {
-      openWindow(id);
-      focusWindow(id);
-    } else if (win.isMinimized) {
-      focusWindow(id);
-    } else if (activeWindowId === id) {
-      minimizeWindow(id);
-    } else {
-      focusWindow(id);
-    }
-
-    // Pixel Spider reacts to mobile navigation per spec
-    const frameMap: Partial<Record<WindowId, SpiderFrame>> = {
-      about: 'idle',
-      projects: 'typing',
-      downloads: 'loading',
-      contact: 'waving',
-      skills: 'celebrating',
-      terminal: 'typing',
-    };
-    const speechMap: Partial<Record<WindowId, string>> = {
-      about: 'Yo! Swipe around — this OS is my portfolio.',
-      projects: 'Check the builds. Real circuits, real code.',
-      downloads: 'Need the CV? I got you.',
-      contact: 'Hit me up. I actually reply.',
-      skills: 'Here\'s what I\'m running under the hood.',
-      terminal: 'Type \'help\' to see what this thing can do.',
-    };
-    const nextFrame = frameMap[id];
-    const nextSpeech = speechMap[id];
-    if (nextFrame) mascot.setFrame(nextFrame);
-    if (nextSpeech) mascot.setSpeechText(nextSpeech);
+    if (!win.isOpen) openWindow(id);
+    else if (win.isMinimized || activeWindowId !== id) focusWindow(id);
+    else minimizeWindow(id);
   };
 
-  // Mobile Bottom Tab Bar layout
   if (isMobile) {
-    const navItems: Array<{ id: WindowId; label: string }> = [
-      { id: 'about', label: t.taskbar.home },
-      { id: 'projects', label: t.taskbar.projects },
-      { id: 'downloads', label: t.taskbar.cv },
-      { id: 'contact', label: t.taskbar.contact },
+    const navItems: Array<{ id: WindowId | 'home'; label: string; glyph: string }> = [
+      { id: 'home', label: t.taskbar.home, glyph: '⌂' },
+      { id: 'projects', label: t.taskbar.projects, glyph: '🛠' },
+      { id: 'downloads', label: t.taskbar.cv, glyph: '📄' },
+      { id: 'contact', label: t.taskbar.contact, glyph: '✉' },
     ];
+    const noneVisible = !Object.values(windows).some((w) => w.isOpen && !w.isMinimized);
 
     return (
-      <>
-        {/* Floating Language Toggle — spec: "floating language toggle" separate from tab bar */}
+      <nav
+        aria-label="Main"
+        className="fixed bottom-0 inset-x-0 z-[600] h-14 bg-panel2 border-t-2 border-slate flex items-stretch pb-[env(safe-area-inset-bottom)]"
+      >
+        {navItems.map((item) => {
+          const isActive =
+            item.id === 'home' ? noneVisible : activeWindowId === item.id && windows[item.id].isOpen && !windows[item.id].isMinimized;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === 'home') {
+                  playClick();
+                  minimizeAll();
+                } else {
+                  handleTabClick(item.id);
+                }
+              }}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 font-pixel text-[10px] ${
+                isActive ? 'text-text bg-panel shadow-[inset_0_2px_0_#212CF4]' : 'text-lavender'
+              }`}
+            >
+              <span className="text-base leading-none" aria-hidden="true">{item.glyph}</span>
+              <span className="truncate max-w-full px-1">{item.label}</span>
+            </button>
+          );
+        })}
         <button
           onClick={toggleLanguage}
           aria-label="Toggle language"
-          className="fixed bottom-20 right-4 z-[510] win9x-button min-w-11 min-h-11 flex items-center justify-center font-pixel text-[10px] text-yellow"
+          className="w-14 flex flex-col items-center justify-center gap-0.5 font-pixel text-[10px] text-yellow border-s border-slate/40"
         >
-          {lang.toUpperCase()}
+          <span className="text-base leading-none" aria-hidden="true">🌐</span>
+          {lang === 'en' ? 'AR' : 'EN'}
+        </button>
+      </nav>
+    );
+  }
+
+  const openApps = APPS.filter((a) => windows[a.id].isOpen);
+
+  return (
+    <>
+      <StartMenu isOpen={isStartOpen} onClose={closeStart} onShutdown={onShutdown} onOpenPalette={onOpenPalette} />
+
+      <div
+        onPointerDown={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.stopPropagation()}
+        className="fixed bottom-0 left-0 right-0 z-[600] h-10 bg-panel2 border-t-2 border-slate shadow-[inset_0_1px_0_#FFFFFF33] flex items-center gap-1.5 px-1.5 select-none"
+      >
+        <button
+          onClick={() => {
+            playClick();
+            setIsStartOpen((prev) => !prev);
+          }}
+          aria-label="Open Start menu"
+          aria-expanded={isStartOpen}
+          className={`win9x-button flex items-center gap-2 px-2.5 h-8 font-pixel text-xs ${isStartOpen ? '!shadow-[inset_1px_1px_0_#0B0B10,inset_-1px_-1px_0_#FFFFFF] bg-panel' : ''}`}
+        >
+          <img src={asset('/icons/ui-start.png')} alt="" className="w-4 h-4 pixel-art" />
+          <span className="font-bold">{t.taskbar.start}</span>
         </button>
 
-        <div className="fixed bottom-0 left-0 right-0 z-[500] bg-panel2 border-t-2 border-slate flex items-center justify-around h-14 px-2">
-          {navItems.map((item) => {
-            const isActive = activeWindowId === item.id && windows[item.id].isOpen && !windows[item.id].isMinimized;
+        <button
+          onClick={onOpenPalette}
+          aria-label="Search apps and actions (Ctrl+K)"
+          title="Search (Ctrl+K)"
+          className="win9x-box-recessed h-8 px-2.5 w-44 xl:w-56 flex items-center gap-2 bg-base text-lavender/80 hover:text-text font-mono text-[11px]"
+        >
+          <span aria-hidden="true">🔍</span>
+          <span className="flex-1 text-start truncate">{t.taskbar.search}…</span>
+          <kbd className="text-[10px] text-slate/80 border border-slate/40 px-1">Ctrl K</kbd>
+        </button>
+
+        <div className="w-px h-6 bg-slate/40 mx-0.5" />
+
+        <div className="flex-1 flex items-center gap-1 overflow-x-auto min-w-0">
+          {openApps.map((app) => {
+            const win = windows[app.id];
+            const isActive = activeWindowId === app.id && !win.isMinimized;
             return (
               <button
-                key={item.id}
-                onClick={() => handleTabClick(item.id)}
-                aria-label={`Open ${item.label}`}
-                className={`flex flex-col items-center justify-center flex-1 h-full py-1 font-pixel text-[10px] min-h-11 ${
-                  isActive ? 'text-text border-t-2 border-spidey bg-panel' : 'text-lavender'
+                key={app.id}
+                onClick={() => handleTabClick(app.id)}
+                aria-label={`${win.title}${win.isMinimized ? ' (minimized)' : ''}`}
+                aria-pressed={isActive}
+                title={win.title}
+                className={`win9x-button flex items-center gap-1.5 px-2 h-8 font-pixel text-[11px] w-40 min-w-[90px] shrink ${
+                  isActive
+                    ? '!shadow-[inset_1px_1px_0_#0B0B10,inset_-1px_-1px_0_#FFFFFF] bg-[repeating-conic-gradient(#1f1f2e_0_25%,#26263a_0_50%)] [background-size:4px_4px] text-text'
+                    : win.isMinimized
+                    ? 'text-lavender/60'
+                    : 'text-lavender hover:text-text'
                 }`}
               >
-                <span className="truncate">{item.label}</span>
+                <img src={asset(app.icon)} alt="" className="w-4 h-4 pixel-art shrink-0" />
+                <span className="truncate">{win.title}</span>
               </button>
             );
           })}
         </div>
-      </>
-    );
-  }
 
-  // Desktop Taskbar Layout
-  return (
-    <>
-      <StartMenu
-        isOpen={isStartOpen}
-        onClose={() => setIsStartOpen(false)}
-        onShutdown={onShutdown}
-      />
-
-      <div className="fixed bottom-0 left-0 right-0 z-[500] h-10 bg-panel2 border-t-2 border-slate flex items-center justify-between px-2 select-none">
-        {/* Left: Start Button */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleStartToggle}
-            aria-label="Open Start Menu"
-            className={`win9x-button flex items-center gap-2 px-3 py-1 font-pixel text-xs ${
-              isStartOpen ? 'shadow-inner bg-panel border-slate' : ''
-            }`}
-          >
-            <span className="text-spidey font-bold">🕸</span>
-            <span>{t.taskbar.start}</span>
-          </button>
-
-          {/* Center: Open Window Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto max-w-[50vw]">
-            {(Object.keys(windows) as WindowId[]).map((id) => {
-              const win = windows[id];
-              if (!win.isOpen) return null;
-              const isActive = activeWindowId === id && !win.isMinimized;
-
-              return (
-                <button
-                  key={id}
-                  onClick={() => handleTabClick(id)}
-                  aria-label={`Switch to ${win.title}`}
-                  className={`win9x-button flex items-center gap-1.5 px-2 py-1 font-pixel text-[11px] max-w-[140px] truncate ${
-                    isActive ? 'bg-panel border-spidey text-text font-bold' : 'text-lavender hover:text-text'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green' : 'bg-slate'}`} />
-                  <span className="truncate">{win.title}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: Clock & Toggles */}
-        <div className="flex items-center gap-2">
-          {/* Language Toggle */}
+        {/* System tray */}
+        <div className="win9x-box-recessed h-8 flex items-center gap-1 px-1.5 bg-panel2">
           <button
             onClick={toggleLanguage}
-            aria-label="Toggle language"
-            className="win9x-button px-2 py-1 font-pixel text-[11px] text-lavender hover:text-text"
-            title="Toggle Language"
+            aria-label={`Language: ${lang.toUpperCase()}. Click to switch.`}
+            title="Language"
+            className="px-1.5 h-6 font-pixel text-[10px] text-lavender hover:text-text hover:bg-panel"
           >
-            [{lang.toUpperCase()}]
+            {lang.toUpperCase()}
           </button>
-
-          {/* Sound Toggle */}
           <button
             onClick={toggleSound}
-            aria-label="Toggle sound"
-            className="win9x-button px-2 py-1 font-pixel text-[11px] text-yellow hover:text-text"
-            title="Toggle Sound"
+            aria-label={isMuted ? 'Sound off. Click to turn on.' : 'Sound on. Click to mute.'}
+            title={isMuted ? 'Sound off' : 'Sound on'}
+            className="px-1 h-6 text-sm hover:bg-panel"
           >
-            {isMuted ? '🔇 OFF' : '🔊 ON'}
+            {isMuted ? '🔇' : '🔊'}
           </button>
-
-          {/* System Clock */}
-          <div className="win9x-box-recessed px-3 py-1 font-mono text-xs text-green bg-base min-w-[70px] text-center">
-            {timeStr || '12:00'}
-          </div>
+          <span
+            className="font-mono text-[11px] text-text px-1.5 tabular-nums"
+            title={now?.toLocaleDateString(lang === 'ar' ? 'ar-DZ' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          >
+            {now ? now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+          </span>
         </div>
+        <button
+          onClick={() => {
+            playClick();
+            minimizeAll();
+          }}
+          aria-label="Show desktop"
+          title="Show desktop"
+          className="w-2 h-8 border-s border-slate/60 hover:bg-spidey/40"
+        />
       </div>
     </>
   );

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Window } from '../Window';
 import { useSound } from '@/context/SoundContext';
+import { asset } from '@/lib/asset';
 
 type FileItem = {
   name: string;
@@ -19,11 +20,11 @@ const FILE_TREE: Record<string, FileItem[]> = {
       size: '2.4 KB',
       type: 'doc',
       path: 'C:\\home\\adam\\documents\\Bio_Summary.txt',
-      content: 'Khoumari Adam — Embedded Systems Engineer & AI Vibe Coder.\nGraduating Master 2 in 2027 from Bouira University.\nFormer President of Scientific Club Afaq (2025-2026).\nRobotics Instructor at CLS Bouira.',
+      content: 'Khoumari Adam — Embedded Systems Engineer · Builds with AI.\nMaster in Embedded Systems, Bouira University (graduating 2027).\nPresident of Scientific Club Afaq (2025-2026).\nArduino & Robotics Instructor at CLS Bouira (2024-2025).',
     },
     {
       name: 'Resume_EN.pdf',
-      size: '185 KB',
+      size: '264 KB',
       type: 'pdf',
       path: 'C:\\home\\adam\\documents\\Resume_EN.pdf',
       content: 'Verified PDF Payload. Embedded systems, ESP32, Machine Learning soil classification, autonomous robotics bootcamps, Raspberry Pi servers.',
@@ -47,11 +48,11 @@ const FILE_TREE: Record<string, FileItem[]> = {
   ],
   'C:\\home\\adam\\media': [
     {
-      name: 'Adam_Portrait.png',
-      size: '559 KB',
+      name: 'Pixel_Spider.png',
+      size: '5 KB',
       type: 'image',
-      path: 'C:\\home\\adam\\media\\Adam_Portrait.png',
-      content: '/mascot/adam-portrait.png',
+      path: 'C:\\home\\adam\\media\\Pixel_Spider.png',
+      content: '/mascot/idle-01.png',
     },
   ],
 };
@@ -136,7 +137,7 @@ export const ExplorerWindow: React.FC = () => {
                 </div>
                 {selectedFile.type === 'image' ? (
                   <div className="flex justify-center p-2">
-                    <img src={selectedFile.content} alt="" className="w-28 h-28 object-contain pixel-art border border-slate" />
+                    <img src={asset(selectedFile.content)} alt="" className="w-28 h-28 object-contain pixel-art border border-slate" />
                   </div>
                 ) : (
                   <pre className="text-green leading-relaxed whitespace-pre-wrap">{selectedFile.content}</pre>

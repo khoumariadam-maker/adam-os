@@ -2,70 +2,120 @@
 
 import React from 'react';
 import { Window } from '../Window';
+import { useLanguage } from '@/context/LanguageContext';
+
+type L10n = { en: string; ar: string };
+
+interface SkillGroup {
+  glyph: string;
+  title: L10n;
+  skills: Array<{ name: string; usedIn: L10n }>;
+}
+
+// No self-rated percentages: every skill points at where it was actually used.
+const GROUPS: SkillGroup[] = [
+  {
+    glyph: '⚡',
+    title: { en: 'Embedded & Hardware', ar: 'الأنظمة المدمجة والعتاد' },
+    skills: [
+      { name: 'ESP32', usedIn: { en: 'Smart Irrigation · Race Challenge cars', ar: 'الري الذكي · سيارات تحدي السباق' } },
+      { name: 'Embedded C / C++', usedIn: { en: 'Firmware for sensors, motors & Bluetooth control', ar: 'برمجيات المستشعرات والمحركات والتحكم بالبلوتوث' } },
+      { name: 'Arduino', usedIn: { en: 'Teaching kids 10–16 at CLS Bouira', ar: 'تدريس الأطفال 10–16 سنة في CLS البويرة' } },
+      { name: 'Sensors & motor drivers', usedIn: { en: 'DHT22, soil moisture, line-following, PWM', ar: 'DHT22، رطوبة التربة، تتبع الخط، PWM' } },
+      { name: 'Raspberry Pi', usedIn: { en: 'Self-hosted 24/7 home server', ar: 'خادم منزلي يعمل 24/7' } },
+    ],
+  },
+  {
+    glyph: '🧩',
+    title: { en: 'Software', ar: 'البرمجيات' },
+    skills: [
+      { name: 'React / Next.js', usedIn: { en: 'School management software · this site', ar: 'برنامج تسيير المدارس · هذا الموقع' } },
+      { name: 'TypeScript', usedIn: { en: 'Web apps and dashboards', ar: 'تطبيقات ولوحات ويب' } },
+      { name: 'Python', usedIn: { en: 'ML model · automation scripts', ar: 'نموذج التعلم الآلي · سكربتات الأتمتة' } },
+      { name: 'Tailwind CSS', usedIn: { en: 'Client web apps · this site', ar: 'تطبيقات العملاء · هذا الموقع' } },
+    ],
+  },
+  {
+    glyph: '☁',
+    title: { en: 'Cloud & Systems', ar: 'السحابة والأنظمة' },
+    skills: [
+      { name: 'Firebase', usedIn: { en: 'Real-time sensor data for Smart Irrigation', ar: 'بيانات المستشعرات الآنية للري الذكي' } },
+      { name: 'Linux / SSH', usedIn: { en: 'Headless Raspberry Pi server', ar: 'خادم Raspberry Pi بدون شاشة' } },
+      { name: 'Docker', usedIn: { en: 'Side projects on the home lab', ar: 'مشاريع جانبية على المختبر المنزلي' } },
+      { name: 'Cron', usedIn: { en: 'Scheduled automation jobs', ar: 'مهام أتمتة مجدولة' } },
+    ],
+  },
+  {
+    glyph: '🤖',
+    title: { en: 'AI', ar: 'الذكاء الاصطناعي' },
+    skills: [
+      { name: 'Agentic workflows', usedIn: { en: 'Multi-agent dev team', ar: 'فريق تطوير متعدد الوكلاء' } },
+      { name: 'LangChain', usedIn: { en: 'Agent orchestration', ar: 'تنسيق الوكلاء' } },
+      { name: 'Prompt engineering', usedIn: { en: 'Agent roles · AI-assisted builds', ar: 'أدوار الوكلاء · البناء بمساعدة الذكاء الاصطناعي' } },
+    ],
+  },
+  {
+    glyph: '🎓',
+    title: { en: 'People', ar: 'العمل مع الناس' },
+    skills: [
+      { name: 'Teaching', usedIn: { en: 'Robotics instructor · CLS Bouira', ar: 'مدرّب روبوتيك · CLS البويرة' } },
+      { name: 'Workshop design', usedIn: { en: '4-day Race Challenge, 30+ participants', ar: 'تحدي السباق 4 أيام، أكثر من 30 مشاركاً' } },
+      { name: 'Leadership', usedIn: { en: 'President, Scientific Club Afaq', ar: 'رئيس النادي العلمي آفاق' } },
+    ],
+  },
+];
+
+const LANGUAGES: Array<{ name: L10n; level: L10n }> = [
+  { name: { en: 'Arabic', ar: 'العربية' }, level: { en: 'Native', ar: 'اللغة الأم' } },
+  { name: { en: 'English', ar: 'الإنجليزية' }, level: { en: 'Fluent', ar: 'بطلاقة' } },
+  { name: { en: 'French', ar: 'الفرنسية' }, level: { en: 'Working proficiency', ar: 'مستوى عملي' } },
+];
 
 export const SkillsWindow: React.FC = () => {
-  const skillCategories = [
-    {
-      category: 'Embedded & Firmware',
-      icon: '⚡',
-      items: [
-        { name: 'ESP32 & Microcontrollers', level: 95, tag: 'FreeRTOS / C++' },
-        { name: 'Sensors & Actuators', level: 92, tag: 'I2C / SPI / UART / PWM' },
-        { name: 'Autonomous Robotics', level: 90, tag: 'Line-Following / Motor Drivers' },
-        { name: 'Hardware Prototyping', level: 85, tag: 'PCB / Soldering / Breadboards' },
-      ],
-    },
-    {
-      category: 'Software & AI Intelligence',
-      icon: '🧠',
-      items: [
-        { name: 'Agentic Dev Workflows', level: 94, tag: 'Antigravity / Multi-Agent' },
-        { name: 'Machine Learning Models', level: 88, tag: 'PyTorch / Soil Classifier' },
-        { name: 'React & TypeScript', level: 86, tag: 'Next.js / Web Applications' },
-        { name: 'Linux Server Administration', level: 84, tag: 'Raspberry Pi / Self-Hosted VPS' },
-      ],
-    },
-  ];
+  const { lang } = useLanguage();
 
   return (
     <Window id="skills">
-      <div className="flex flex-col gap-6 font-body text-textDim">
-        <div className="flex items-center justify-between border-b border-slate pb-2">
-          <span className="font-pixel text-xs text-lavender uppercase tracking-wider">
-            System Diagnostics // Hardware & Software Gauges
-          </span>
-          <span className="font-mono text-[10px] text-green bg-panel2 px-2 py-0.5 border border-slate">
-            STATUS: 100% OPERATIONAL
-          </span>
-        </div>
+      <div className="space-y-4 select-text">
+        <p className="text-[13px] text-lavender">
+          {lang === 'ar'
+            ? 'كل مهارة هنا مرتبطة بمكان استعملتها فيه فعلاً.'
+            : 'No made-up percentages — every skill here points to where I actually used it.'}
+        </p>
 
-        {/* Skill Category Cards */}
-        {skillCategories.map((cat, idx) => (
-          <div key={idx} className="win9x-box-recessed p-4 bg-panel2 space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate/40 pb-2">
-              <span className="text-base">{cat.icon}</span>
-              <h3 className="font-pixel text-xs text-text">{cat.category}</h3>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {GROUPS.map((group) => (
+            <section key={group.title.en} className="win9x-box-recessed p-3 space-y-2">
+              <h3 className="flex items-center gap-2 font-pixel text-xs text-text border-b border-slate/30 pb-1.5">
+                <span aria-hidden="true">{group.glyph}</span>
+                {group.title[lang]}
+              </h3>
+              <ul className="space-y-1.5">
+                {group.skills.map((skill) => (
+                  <li key={skill.name} className="leading-snug">
+                    <span className="font-mono text-[12px] text-green">{skill.name}</span>
+                    <span className="block text-[11px] text-textDim/80">{skill.usedIn[lang]}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
 
-            <div className="space-y-3">
-              {cat.items.map((skill, sIdx) => (
-                <div key={sIdx} className="space-y-1">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-pixel text-[11px] text-text">{skill.name}</span>
-                    <span className="font-mono text-[10px] text-yellow">{skill.tag}</span>
-                  </div>
-                  {/* Retro LED Meter Bar */}
-                  <div className="w-full bg-base border border-slate p-0.5 flex gap-0.5">
-                    <div
-                      className="h-3 bg-green transition-all duration-300 shadow-[0_0_8px_rgba(114,255,180,0.5)]"
-                      style={{ width: `${skill.level}%` }}
-                    />
-                  </div>
-                </div>
+          <section className="win9x-box-recessed p-3 space-y-2">
+            <h3 className="flex items-center gap-2 font-pixel text-xs text-text border-b border-slate/30 pb-1.5">
+              <span aria-hidden="true">🌐</span>
+              {lang === 'ar' ? 'اللغات' : 'Languages'}
+            </h3>
+            <ul className="space-y-1.5">
+              {LANGUAGES.map((l) => (
+                <li key={l.name.en} className="flex justify-between text-[12px]">
+                  <span className="text-text">{l.name[lang]}</span>
+                  <span className="text-lavender">{l.level[lang]}</span>
+                </li>
               ))}
-            </div>
-          </div>
-        ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </Window>
   );

@@ -1,90 +1,135 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { DesktopIcon } from './DesktopIcon';
 import { Taskbar } from './Taskbar';
 import { PixelSpider } from './PixelSpider';
 import { ContextMenu } from './ContextMenu';
+import { CommandPalette } from './CommandPalette';
+import { HireCard } from './HireCard';
 import { AboutWindow } from './windows/AboutWindow';
 import { ProjectsWindow } from './windows/ProjectsWindow';
 import { SkillsWindow } from './windows/SkillsWindow';
+import { LabWindow } from './windows/LabWindow';
 import { TerminalWindow } from './windows/TerminalWindow';
 import { JukeboxWindow } from './windows/JukeboxWindow';
 import { DownloadsWindow } from './windows/DownloadsWindow';
 import { ContactWindow } from './windows/ContactWindow';
 import { SpiderSnakeWindow } from './windows/SpiderSnakeWindow';
+import { MinesweeperWindow } from './windows/MinesweeperWindow';
 import { ControlPanelWindow } from './windows/ControlPanelWindow';
 import { ExplorerWindow } from './windows/ExplorerWindow';
 import { PaintWindow } from './windows/PaintWindow';
-import { useWindowManager, WindowId } from '@/context/WindowManagerContext';
+import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
 import { useMascot } from '@/context/MascotContext';
+import { useSettings } from '@/context/SettingsContext';
+import { APPS, APP_BY_ID, WindowId } from '@/lib/apps';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { asset } from '@/lib/asset';
 
 interface DesktopProps {
   onReboot?: () => void;
 }
 
-export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
-  const { windows } = useWindowManager();
-  const { t, lang, toggleLanguage } = useLanguage();
-  const { isMuted, toggleSound } = useSound();
-  const mascot = useMascot();
+type Rect = { x: number; y: number; w: number; h: number };
 
-  const [selectedIcon, setSelectedIcon] = useState<WindowId | 'sound' | 'lang' | null>(null);
+export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
+  const { openWindow } = useWindowManager();
+  const { t } = useLanguage();
+  const { playClick, playWindowOpen } = useSound();
+  const mascot = useMascot();
+  const { settings } = useSettings();
+  const isMobile = useIsMobile();
+
+  const [selected, setSelected] = useState<Set<WindowId>>(new Set());
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isShutdown, setIsShutdown] = useState<boolean>(false);
+  const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
+  const [marquee, setMarquee] = useState<Rect | null>(null);
+  const iconsRef = useRef<HTMLDivElement>(null);
 
-  const desktopIcons: Array<{ id: WindowId; label: string; icon: string }> = [
-    { id: 'about', label: t.desktop.about, icon: '/icons/nav-about.png' },
-    { id: 'projects', label: t.desktop.projects, icon: '/icons/nav-projects.png' },
-    { id: 'skills', label: t.desktop.skills || 'Skills.exe', icon: '/icons/nav-skills.png' },
-    { id: 'terminal', label: t.desktop.terminal, icon: '/icons/ui-terminal.png' },
-    { id: 'jukebox', label: 'Jukebox.exe', icon: '/icons/ui-ai-spark.png' },
-    { id: 'snake', label: 'SpiderSnake', icon: '/icons/file-zip.png' },
-    { id: 'controlpanel', label: 'ControlPanel', icon: '/icons/nav-skills.png' },
-    { id: 'explorer', label: 'Explorer.exe', icon: '/icons/ui-folder-open.png' },
-    { id: 'paint', label: 'Paint.exe', icon: '/icons/ui-ai-spark.png' },
-    { id: 'downloads', label: t.desktop.downloads, icon: '/icons/nav-downloads.png' },
-    { id: 'contact', label: t.desktop.contact, icon: '/icons/nav-contact.png' },
-  ];
+  const labels: Partial<Record<WindowId, string>> = {
+    about: t.desktop.about,
+    projects: t.desktop.projects,
+    skills: t.desktop.skills,
+    terminal: t.desktop.terminal,
+    downloads: t.desktop.downloads,
+    contact: t.desktop.contact,
+  };
+  // Phones get every app on the home screen; the desktop keeps the clutter down.
+  const desktopApps = APPS.filter((a) => isMobile || a.onDesktop);
 
-  // Periodic Spider Swing Interaction
-  useEffect(() => {
-    const interval = setInterval(() => {
-      mascot.triggerRandomInteraction();
-    }, 25000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleOpen = useCallback(
+    (id: WindowId) => {
+      playClick();
+      playWindowOpen();
+      openWindow(id);
+      mascot.notifyWindowEvent('open', APP_BY_ID[id].title);
+      setSelected(new Set([id]));
+    },
+    [openWindow, playClick, playWindowOpen, mascot]
+  );
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  const handleSelect = (id: WindowId, additive: boolean) => {
+    playClick();
+    setSelected((prev) => {
+      if (!additive) return new Set([id]);
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  const handleIconSelect = (id: WindowId) => {
-    setSelectedIcon(id);
-    mascot.notifyWindowEvent('open', windows[id]?.title || id);
+  // Rubber-band selection on empty desktop space.
+  const handleDesktopPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setContextMenuPos(null);
+    if (e.button !== 0 || e.target !== e.currentTarget || e.pointerType === 'touch') return;
+    setSelected(new Set());
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const onMove = (mv: PointerEvent) => {
+      const rect = {
+        x: Math.min(sx, mv.clientX),
+        y: Math.min(sy, mv.clientY),
+        w: Math.abs(mv.clientX - sx),
+        h: Math.abs(mv.clientY - sy),
+      };
+      setMarquee(rect);
+      const hits = new Set<WindowId>();
+      iconsRef.current?.querySelectorAll<HTMLElement>('[data-icon-id]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.left < rect.x + rect.w && r.right > rect.x && r.top < rect.y + rect.h && r.bottom > rect.y) {
+          hits.add(el.dataset.iconId as WindowId);
+        }
+      });
+      setSelected(hits);
+    };
+    const onUp = () => {
+      setMarquee(null);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
-  // CV Download Theater Sequence
   const handleTriggerTheater = (file: 'en' | 'ar') => {
-    mascot.setFrame('loading');
-    mascot.setSpeechText(file === 'en' ? 'Fetching Resume_EN.pdf!' : 'Fetching Resume_AR.pdf!');
-
-    setTimeout(() => {
-      mascot.triggerRandomInteraction();
-    }, 400);
+    mascot.react('loading', file === 'en' ? 'Fetching Resume_EN.pdf!' : 'Fetching Resume_AR.pdf!', 1200);
   };
 
   if (isShutdown) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-base flex flex-col items-center justify-center p-8 text-center font-pixel text-text crt-scanlines">
-        <div className="win9x-box-raised p-8 bg-panel max-w-md space-y-4 border-2 border-red">
-          <h1 className="text-red text-lg">SYSTEM SHUTDOWN</h1>
-          <p className="font-body text-textDim text-sm">{t.shutdown.message}</p>
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-8 text-center font-pixel text-text crt-scanlines">
+        <div className="space-y-6 max-w-md">
+          <p className="text-[#FF9F43] text-base md:text-lg leading-relaxed">{t.shutdown.message}</p>
           <button
-            onClick={() => setIsShutdown(false)}
+            onClick={() => {
+              setIsShutdown(false);
+              onReboot?.();
+            }}
             aria-label="Reboot system"
             className="win9x-button win9x-button-spidey px-4 py-2 font-pixel text-xs text-text"
           >
@@ -95,116 +140,96 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
     );
   }
 
-  const wallpaperPath = `/wallpapers/${mascot.activeWallpaper}-16x9.jpg`;
-
   return (
     <div
-      onClick={() => {
-        setSelectedIcon(null);
-        setContextMenuPos(null);
+      onPointerDown={handleDesktopPointerDown}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setContextMenuPos({ x: e.clientX, y: e.clientY });
       }}
-      onContextMenu={handleContextMenu}
-      className="relative w-screen h-screen overflow-hidden bg-base bg-halftone bg-cobalt-glow select-none"
+      className="relative w-full h-full overflow-hidden bg-base"
     >
-      {/* Real Desktop Wallpaper Image */}
+      {/* Wallpaper + readability layers (all non-interactive) */}
       <img
-        src={wallpaperPath}
-        alt="Desktop Wallpaper"
-        className="absolute inset-0 w-full h-full object-cover opacity-25 pixel-art pointer-events-none transition-opacity duration-300"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = '/wallpapers/night-city-16x9.jpg';
-        }}
+        src={asset(`/wallpapers/${mascot.activeWallpaper}-16x9.jpg`)}
+        alt=""
+        draggable={false}
+        className="absolute inset-0 w-full h-full object-cover pixel-art pointer-events-none opacity-60"
       />
+      <div className="absolute inset-0 desktop-vignette pointer-events-none" />
+      <div className="absolute inset-0 bg-halftone bg-halftone-overlay bg-halftone-animate pointer-events-none" />
+      {settings.crtBloom && <div className="crt-bloom-overlay" />}
 
-      {/* Background Halftone Overlay with 60s linear drift */}
-      <div className="absolute inset-0 bg-halftone-overlay bg-halftone-animate pointer-events-none" />
-
-      {/* CRT Bloom Shader Overlay */}
-      <div id="crt-bloom-overlay" className="crt-bloom-overlay hidden pointer-events-none" />
-
-      {/* Right-Click Desktop Context Menu */}
       {contextMenuPos && (
         <ContextMenu
           x={contextMenuPos.x}
           y={contextMenuPos.y}
           onClose={() => setContextMenuPos(null)}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
       )}
 
-      {/* Desktop Icons Grid (3-column on mobile <768px, flex-column wrap on desktop) */}
-      <div className="absolute top-4 left-4 z-[10] grid grid-cols-3 md:flex md:flex-col md:flex-wrap max-h-[calc(100vh-60px)] gap-x-6 gap-y-2 content-start pointer-events-auto">
-        {desktopIcons.map((icon) => (
+      {/* Phone home screen: profile card + app grid, scrollable above the tab bar */}
+      <div className={isMobile ? 'absolute inset-x-0 top-0 bottom-14 overflow-y-auto z-[10]' : 'contents'}>
+      {isMobile && <HireCard variant="mobile" />}
+
+      {/* Icons: column-major grid that wraps into a new column when it runs out of height */}
+      <div
+        ref={iconsRef}
+        onPointerDown={handleDesktopPointerDown}
+        className={
+          isMobile
+            ? 'grid grid-cols-4 gap-y-2 justify-items-center px-2 pt-2 pb-28'
+            : 'absolute top-3 left-3 bottom-12 z-[10] grid grid-flow-col auto-cols-max gap-x-1 gap-y-1 content-start [grid-template-rows:repeat(auto-fill,92px)]'
+        }
+      >
+        {desktopApps.map((app) => (
           <DesktopIcon
-            key={icon.id}
-            id={icon.id}
-            label={icon.label}
-            iconSrc={icon.icon}
-            isSelected={selectedIcon === icon.id}
-            onSelect={handleIconSelect}
+            key={app.id}
+            id={app.id}
+            label={(labels[app.id] ?? app.title).replace(/\.exe$/, '')}
+            iconSrc={app.icon}
+            isSelected={selected.has(app.id)}
+            onSelect={handleSelect}
+            onOpen={handleOpen}
           />
         ))}
-
-        {/* Sound Toggle Desktop Icon */}
-        <button
-          type="button"
-          aria-label="Toggle sound"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleSound();
-            setSelectedIcon('sound');
-          }}
-          className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer w-24 ${
-            selectedIcon === 'sound' ? 'bg-spidey/30 border border-spidey' : 'hover:bg-panel2/40'
-          }`}
-        >
-          <div className="w-12 h-12 flex items-center justify-center font-pixel text-xl text-yellow">
-            {isMuted ? '🔇' : '🔊'}
-          </div>
-          <span className="font-pixel text-[13px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-            {isMuted ? t.desktop.soundOff : t.desktop.soundOn}
-          </span>
-        </button>
-
-        {/* Language Toggle Desktop Icon */}
-        <button
-          type="button"
-          aria-label="Toggle language"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleLanguage();
-            setSelectedIcon('lang');
-          }}
-          className={`flex flex-col items-center justify-center p-2 rounded cursor-pointer w-24 ${
-            selectedIcon === 'lang' ? 'bg-spidey/30 border border-spidey' : 'hover:bg-panel2/40'
-          }`}
-        >
-          <div className="w-12 h-12 flex items-center justify-center font-pixel text-xl text-lavender">
-            🌐
-          </div>
-          <span className="font-pixel text-[13px] text-text text-center mt-1 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-            [{lang.toUpperCase()}]
-          </span>
-        </button>
+      </div>
       </div>
 
-      {/* Render Application Windows (z-index 100-200) */}
+      {!isMobile && <HireCard variant="desktop" />}
+
+      {marquee && (
+        <div
+          className="marquee fixed pointer-events-none z-[20]"
+          style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
+        />
+      )}
+
       <AboutWindow />
       <ProjectsWindow />
       <SkillsWindow />
+      <LabWindow />
       <TerminalWindow onTriggerTheater={handleTriggerTheater} onReboot={onReboot} />
       <JukeboxWindow />
       <SpiderSnakeWindow />
+      <MinesweeperWindow />
       <ControlPanelWindow />
       <ExplorerWindow />
       <PaintWindow />
       <DownloadsWindow onTriggerTheater={handleTriggerTheater} />
       <ContactWindow />
 
-      {/* Mascot Pixel Spider (z-index 750) */}
       <PixelSpider />
 
-      {/* Bottom Taskbar (z-index 500) */}
-      <Taskbar onShutdown={() => setIsShutdown(true)} />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onReboot={onReboot}
+        onShutdown={() => setIsShutdown(true)}
+      />
+
+      <Taskbar onShutdown={() => setIsShutdown(true)} onOpenPalette={() => setPaletteOpen(true)} />
     </div>
   );
 };

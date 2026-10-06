@@ -1,20 +1,50 @@
 'use client';
 
-import React from 'react';
-import { useWindowManager, WindowId } from '@/context/WindowManagerContext';
+import React, { useEffect, useRef } from 'react';
+import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
+import { APPS, AppGroup, WindowId } from '@/lib/apps';
+import { PROFILE } from '@/lib/profile';
+import { asset } from '@/lib/asset';
 
 interface StartMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onShutdown: () => void;
+  onOpenPalette: () => void;
 }
 
-export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdown }) => {
-  const { openWindow, focusWindow } = useWindowManager();
-  const { t } = useLanguage();
+const itemClass =
+  'w-full flex items-center gap-2.5 px-2.5 py-1.5 text-start hover:bg-spidey focus-visible:bg-spidey focus-visible:outline-none';
+
+export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdown, onOpenPalette }) => {
+  const { openWindow } = useWindowManager();
+  const { t, lang } = useLanguage();
   const { playClick, playWindowOpen, playShutdown } = useSound();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click / Escape, and focus the first item for keyboard users.
+  useEffect(() => {
+    if (!isOpen) return;
+    menuRef.current?.querySelector<HTMLElement>('button, a')?.focus();
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!menuRef.current?.contains(target) && !target.closest('[aria-label="Open Start menu"]')) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('pointerdown', onPointer);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -22,118 +52,77 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
     playClick();
     playWindowOpen();
     openWindow(id);
-    focusWindow(id);
     onClose();
   };
 
-  const handleShutdownClick = () => {
-    playClick();
-    playShutdown();
-    onShutdown();
-    onClose();
-  };
+  const groups: Array<{ key: AppGroup; label: string }> = [
+    { key: 'portfolio', label: t.startmenu.programs },
+    { key: 'tools', label: t.startmenu.tools },
+    { key: 'games', label: t.startmenu.games },
+  ];
 
   return (
     <div
-      className="fixed bottom-11 left-1 z-[900] w-64 win9x-box-raised bg-panel flex flex-col p-1 shadow-2xl border-2 border-slate"
-      onClick={(e) => e.stopPropagation()}
+      ref={menuRef}
+      role="menu"
+      aria-label="Start menu"
+      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed bottom-10 left-1 z-[900] w-72 win9x-box-raised window-active-shadow flex"
     >
-      <div className="flex gap-2">
-        {/* Win98 Blue Gradient Side Banner */}
-        <div className="w-8 bg-spidey flex items-end justify-center py-4 writing-mode-vertical border-r border-slate">
-          <span className="font-pixel text-xs text-text tracking-widest rotate-180 select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            ADAM OS 98
-          </span>
+      <div className="w-8 bg-gradient-to-t from-spidey to-[#0a0f6b] flex items-end justify-center pb-3">
+        <span className="font-pixel text-sm text-text tracking-widest [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+          ADAM<span className="text-lavender">OS</span> 98
+        </span>
+      </div>
+
+      <div className="flex-1 py-1 font-pixel text-[11px] text-text">
+        <div className="px-2.5 py-2 mb-1 border-b border-slate/40 flex items-center gap-2">
+          <img src={asset('/mascot/idle-01.png')} alt="" className="w-8 h-8 pixel-art bg-panel2 border border-slate/50" />
+          <div className="min-w-0">
+            <p className="truncate">{lang === 'ar' ? PROFILE.nameAr : PROFILE.name}</p>
+            <p className="font-body text-[10px] text-lavender truncate">{lang === 'ar' ? PROFILE.roleAr : PROFILE.role}</p>
+          </div>
         </div>
 
-        {/* Menu Items */}
-        <div className="flex-1 flex flex-col gap-1 py-1 pr-1 font-pixel text-xs text-text">
-          <button
-            onClick={() => handleOpen('about')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-yellow">▶</span> {t.startmenu.about}
-          </button>
+        {groups.map((group) => (
+          <div key={group.key} className="mb-1">
+            <p className="px-2.5 pt-1 pb-0.5 text-[9px] uppercase tracking-widest text-lavender/70">{group.label}</p>
+            {APPS.filter((a) => a.group === group.key).map((app) => (
+              <button key={app.id} role="menuitem" onClick={() => handleOpen(app.id)} className={itemClass}>
+                <img src={asset(app.icon)} alt="" className="w-4 h-4 pixel-art" />
+                {app.title}
+              </button>
+            ))}
+          </div>
+        ))}
 
-          <button
-            onClick={() => handleOpen('projects')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-yellow">▶</span> {t.startmenu.projects}
-          </button>
-
-          <button
-            onClick={() => handleOpen('skills')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-green">▶</span> Skills.exe
-          </button>
-
-          <button
-            onClick={() => handleOpen('terminal')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-green">▶</span> {t.startmenu.terminal}
-          </button>
-
-          <button
-            onClick={() => handleOpen('jukebox')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-yellow">♫</span> Jukebox.exe (8-Bit)
-          </button>
-
-          <button
-            onClick={() => handleOpen('snake')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-[#72FFB4]">🐍</span> SpiderSnake.exe
-          </button>
-
-          <button
-            onClick={() => handleOpen('explorer')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-[#FFE55C]">📁</span> Explorer.exe
-          </button>
-
-          <button
-            onClick={() => handleOpen('paint')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-[#FF3A66]">🎨</span> Paint.exe
-          </button>
-
-          <button
-            onClick={() => handleOpen('controlpanel')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-[#C3C6ED]">⚙</span> ControlPanel.exe
-          </button>
-
-          <button
-            onClick={() => handleOpen('downloads')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-yellow">▶</span> {t.startmenu.cv}
-          </button>
-
-          <button
-            onClick={() => handleOpen('contact')}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-spidey hover:text-text text-left transition-colors"
-          >
-            <span className="text-yellow">▶</span> {t.startmenu.contact}
-          </button>
-
-          <div className="my-1 border-b border-slate" />
-
-          <button
-            onClick={handleShutdownClick}
-            className="flex items-center gap-2 px-3 py-1.5 text-red hover:bg-red hover:text-text text-left transition-colors"
-          >
-            <span>⏻</span> {t.startmenu.shutdown}
-          </button>
-        </div>
+        <div className="my-1 border-t border-slate/40" />
+        <a role="menuitem" href={asset('/resume/')} className={itemClass}>
+          <span className="w-4 text-center">🧾</span> {t.startmenu.web_resume}
+        </a>
+        <button
+          role="menuitem"
+          onClick={() => {
+            onClose();
+            onOpenPalette();
+          }}
+          className={itemClass}
+        >
+          <span className="w-4 text-center">🔍</span> {t.startmenu.run}
+        </button>
+        <div className="my-1 border-t border-slate/40" />
+        <button
+          role="menuitem"
+          onClick={() => {
+            playClick();
+            playShutdown();
+            onClose();
+            onShutdown();
+          }}
+          className={`${itemClass} text-red hover:!bg-red hover:text-text`}
+        >
+          <span className="w-4 text-center">⏻</span> {t.startmenu.shutdown}
+        </button>
       </div>
     </div>
   );

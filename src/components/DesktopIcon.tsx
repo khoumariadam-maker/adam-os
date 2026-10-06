@@ -1,71 +1,60 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { useWindowManager, WindowId } from '@/context/WindowManagerContext';
-import { useSound } from '@/context/SoundContext';
+import { WindowId } from '@/lib/apps';
+import { asset } from '@/lib/asset';
 
 interface DesktopIconProps {
   id: WindowId;
   label: string;
   iconSrc: string;
   isSelected: boolean;
-  onSelect: (id: WindowId) => void;
+  onSelect: (id: WindowId, additive: boolean) => void;
+  onOpen: (id: WindowId) => void;
 }
 
-export const DesktopIcon: React.FC<DesktopIconProps> = ({
-  id,
-  label,
-  iconSrc,
-  isSelected,
-  onSelect,
-}) => {
-  const { openWindow, focusWindow } = useWindowManager();
-  const { playClick, playWindowOpen } = useSound();
-
-  const handleDoubleClick = () => {
-    playClick();
-    playWindowOpen();
-    openWindow(id);
-    focusWindow(id);
-  };
-
-  const handleClick = () => {
-    playClick();
-    onSelect(id);
-  };
-
+export const DesktopIcon: React.FC<DesktopIconProps> = ({ id, label, iconSrc, isSelected, onSelect, onOpen }) => {
   return (
-    <motion.button
+    <button
       type="button"
+      data-icon-id={id}
       aria-label={`Open ${label}`}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      whileHover={{ scale: 1.08 }}
-      transition={{ duration: 0.1 }}
-      className={`group flex flex-col items-center justify-center p-2 rounded cursor-pointer w-24 select-none ${
-        isSelected ? 'bg-spidey/30 border border-spidey' : 'hover:bg-panel2/40'
-      }`}
+      title={label}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Touch: one tap opens (like a phone). Mouse: click selects, double-click opens.
+        if ((e.nativeEvent as PointerEvent).pointerType === 'touch') onOpen(id);
+        else onSelect(id, e.ctrlKey || e.metaKey);
+      }}
+      onDoubleClick={() => onOpen(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          onOpen(id);
+        }
+      }}
+      className="group flex flex-col items-center justify-start gap-1 p-1.5 w-[88px] md:w-[96px] h-[88px] md:h-[92px] outline-none focus-visible:outline-dotted focus-visible:outline-1 focus-visible:outline-lavender"
     >
-      <div className="w-12 h-12 md:w-16 md:h-16 relative flex items-center justify-center mb-1">
-        {/* Placeholder SVG if image asset missing, otherwise 64x64 image */}
+      <span className="relative w-12 h-12 md:w-11 md:h-11 flex items-center justify-center">
         <img
-          src={iconSrc}
-          alt={label}
-          onError={(e) => {
-            // Fallback 64x64 pixel icon SVG
-            (e.target as HTMLImageElement).src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="%23171722" rx="4"/><rect x="8" y="8" width="48" height="48" fill="%23212CF4" opacity="0.3"/><text x="32" y="38" font-family="monospace" font-size="24" fill="%23FFFFFF" text-anchor="middle">.EXE</text></svg>`;
-          }}
-          className="w-12 h-12 md:w-16 md:h-16 object-contain pixel-art drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+          src={asset(iconSrc)}
+          alt=""
+          draggable={false}
+          className={`w-full h-full object-contain pixel-art drop-shadow-[2px_2px_0_rgba(0,0,0,0.7)] transition-transform group-hover:-translate-y-0.5 ${
+            isSelected ? 'brightness-75 [filter:drop-shadow(2px_2px_0_rgba(0,0,0,0.7))_sepia(1)_hue-rotate(190deg)_saturate(5)]' : ''
+          }`}
         />
-      </div>
+      </span>
       <span
-        className={`font-pixel text-[13px] text-center leading-tight break-words max-w-full px-1 py-0.5 tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${
-          isSelected ? 'bg-spidey text-text font-bold' : 'text-text group-hover:text-yellow'
+        className={`icon-label font-pixel leading-tight text-center px-1 line-clamp-2 ${
+          label.length > 9 ? 'text-[10px] tracking-tight' : 'text-[11px]'
+        } ${
+          isSelected ? 'bg-spidey text-text outline-dotted outline-1 outline-lavender' : 'text-text'
         }`}
       >
         {label}
       </span>
-    </motion.button>
+    </button>
   );
 };

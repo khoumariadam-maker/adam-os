@@ -1,10 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
-import { SpiderFrame } from '@/components/PixelSpider';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import type { SpiderFrame } from '@/components/PixelSpider';
 import { useSound } from './SoundContext';
+import { readStorage, writeStorage } from '@/lib/storage';
+import { MOBILE_BREAKPOINT } from '@/lib/hooks/useIsMobile';
 
-type WallpaperName = 'night-city' | 'cyber-forest' | 'pixel-mountains' | 'y2k-pattern';
+export const WALLPAPERS = ['night-city', 'cyber-forest', 'pixel-mountains', 'y2k-pattern'] as const;
+export type WallpaperName = (typeof WALLPAPERS)[number];
 
 interface MascotContextType {
   frame: SpiderFrame;
@@ -13,91 +16,89 @@ interface MascotContextType {
   activeWallpaper: WallpaperName;
   setFrame: (frame: SpiderFrame) => void;
   setSpeechText: (text: string | undefined) => void;
+  // Shows a frame + line, then returns to idle after `ms`.
+  react: (frame: SpiderFrame, text?: string, ms?: number) => void;
   triggerRandomInteraction: () => void;
   notifyWindowEvent: (type: 'open' | 'close' | 'minimize', windowTitle?: string) => void;
   changeWallpaper: (name: WallpaperName) => void;
 }
 
+const WALLPAPER_KEY = 'adam_os_wallpaper';
+
+const TIPS: Array<{ frame: SpiderFrame; text: string; sound: 'swing' | 'fanfare' | 'click' }> = [
+  { frame: 'swinging', text: 'Thwip! Press Ctrl+K to jump to any app.', sound: 'swing' },
+  { frame: 'celebrating', text: 'Adam led the Scientific Club Afaq at Bouira University in 2025–2026.', sound: 'fanfare' },
+  { frame: 'typing', text: 'Open Lab.exe to watch a simulated feed from the ESP32 irrigation build.', sound: 'click' },
+  { frame: 'waving', text: 'Hiring? Resume.exe has the PDF, and /resume has a plain web version.', sound: 'click' },
+  { frame: 'typing', text: "Try 'neofetch' or 'sudo hire-adam' in Terminal.exe.", sound: 'click' },
+  { frame: 'sleeping', text: 'Zzz… drag a window to the screen edge to snap it. Click me to wake up!', sound: 'click' },
+];
+
 const MascotContext = createContext<MascotContextType | undefined>(undefined);
 
 export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { playSwing, playClick, playDownloadFanfare, playError } = useSound();
+  const { playSwing, playClick, playDownloadFanfare } = useSound();
   const [frame, setFrame] = useState<SpiderFrame>('idle');
-  const [speechText, setSpeechText] = useState<string | undefined>("Hey there! I'm Pixel Spider. Click around or right-click the desktop!");
+  // Phones skip the greeting: the screen is small and the home card already says hello.
+  const [speechText, setSpeechText] = useState<string | undefined>(() =>
+    typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+      ? undefined
+      : "Hey! I'm Pixel Spider. Double-click an icon, or press Ctrl+K to search."
+  );
   const [isSwinging, setIsSwinging] = useState<boolean>(false);
   const [activeWallpaper, setActiveWallpaper] = useState<WallpaperName>('night-city');
-  const [interactionIndex, setInteractionIndex] = useState<number>(0);
+  const tipIndex = useRef(0);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const changeWallpaper = (name: WallpaperName) => {
-    setActiveWallpaper(name);
-    playClick();
-    setFrame('celebrating');
-    setSpeechText(`Wallpaper changed to ${name.replace('-', ' ')}! Looks retro.`);
-    setTimeout(() => setFrame('idle'), 1500);
-  };
+  useEffect(() => {
+    const saved = readStorage(WALLPAPER_KEY) as WallpaperName | null;
+    if (saved && WALLPAPERS.includes(saved)) setActiveWallpaper(saved);
+    return () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    };
+  }, []);
 
-  const triggerRandomInteraction = () => {
-    const nextIdx = (interactionIndex + 1) % 5;
-    setInteractionIndex(nextIdx);
+  const react = useCallback((nextFrame: SpiderFrame, text?: string, ms = 1800) => {
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    setFrame(nextFrame);
+    if (text !== undefined) setSpeechText(text);
+    resetTimer.current = setTimeout(() => {
+      setFrame('idle');
+      setIsSwinging(false);
+    }, ms);
+  }, []);
 
-    switch (nextIdx) {
-      case 0:
-        // Swing Arc
-        playSwing();
-        setIsSwinging(true);
-        setFrame('swinging');
-        setSpeechText('Thwip! Web slinger on duty. Swinging across Adam OS!');
-        setTimeout(() => {
-          setIsSwinging(false);
-          setFrame('idle');
-        }, 1200);
-        break;
+  const changeWallpaper = useCallback(
+    (name: WallpaperName) => {
+      setActiveWallpaper(name);
+      writeStorage(WALLPAPER_KEY, name);
+      playClick();
+      react('celebrating', `Wallpaper changed to ${name.replace('-', ' ')}.`, 1500);
+    },
+    [playClick, react]
+  );
 
-      case 1:
-        // Celebration Fanfare
-        playDownloadFanfare();
-        setFrame('celebrating');
-        setSpeechText('Boom! Did you know Adam led the Scientific Club Afaq and organized robotics bootcamps?');
-        setTimeout(() => setFrame('idle'), 2000);
-        break;
-
-      case 2:
-        // Typing / Hardware Quote
-        playClick();
-        setFrame('typing');
-        setSpeechText('Debugging ESP32 sensors... 35% water saved in Smart Irrigation project!');
-        setTimeout(() => setFrame('idle'), 2200);
-        break;
-
-      case 3:
-        // Waving
-        playClick();
-        setFrame('waving');
-        setSpeechText("Need a fast response? Hit Email or Phone in Contact.exe — Adam replies fast!");
-        setTimeout(() => setFrame('idle'), 2000);
-        break;
-
-      case 4:
-        // Nap time
-        playClick();
-        setFrame('sleeping');
-        setSpeechText('Zzz... Energy rebooting... Click me to wake up!');
-        setTimeout(() => setFrame('idle'), 2500);
-        break;
+  const triggerRandomInteraction = useCallback(() => {
+    const tip = TIPS[tipIndex.current % TIPS.length];
+    tipIndex.current += 1;
+    if (tip.sound === 'swing') {
+      playSwing();
+      setIsSwinging(true);
+    } else if (tip.sound === 'fanfare') {
+      playDownloadFanfare();
+    } else {
+      playClick();
     }
-  };
+    react(tip.frame, tip.text, tip.frame === 'sleeping' ? 2500 : 1800);
+  }, [playSwing, playDownloadFanfare, playClick, react]);
 
-  const notifyWindowEvent = (type: 'open' | 'close' | 'minimize', windowTitle?: string) => {
-    if (type === 'open') {
-      setFrame('loading');
-      if (windowTitle) setSpeechText(`Opening ${windowTitle}...`);
-      setTimeout(() => setFrame('idle'), 1000);
-    } else if (type === 'close') {
-      setFrame('waving');
-      if (windowTitle) setSpeechText(`Closed ${windowTitle}. What next operator?`);
-      setTimeout(() => setFrame('idle'), 1200);
-    }
-  };
+  const notifyWindowEvent = useCallback(
+    (type: 'open' | 'close' | 'minimize', windowTitle?: string) => {
+      if (type === 'open') react('loading', windowTitle ? `Opening ${windowTitle}…` : undefined, 900);
+      else if (type === 'close') react('waving', undefined, 900);
+    },
+    [react]
+  );
 
   return (
     <MascotContext.Provider
@@ -108,6 +109,7 @@ export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         activeWallpaper,
         setFrame,
         setSpeechText,
+        react,
         triggerRandomInteraction,
         notifyWindowEvent,
         changeWallpaper,

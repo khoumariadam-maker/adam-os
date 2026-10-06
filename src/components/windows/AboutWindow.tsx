@@ -4,120 +4,159 @@ import React, { useState } from 'react';
 import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
+import { useWindowManager } from '@/context/WindowManagerContext';
+import { PROFILE } from '@/lib/profile';
+import { asset } from '@/lib/asset';
+import { WindowId } from '@/lib/apps';
+
+type Tab = 'story' | 'experience';
+type L10n = { en: string; ar: string };
+
+const TIMELINE: Array<{ period: string; title: L10n; org: L10n; text: L10n }> = [
+  {
+    period: '2024 — 2027',
+    title: { en: "Master's in Embedded Systems", ar: 'ماستر في الأنظمة المدمجة' },
+    org: { en: 'Bouira University', ar: 'جامعة البويرة' },
+    text: {
+      en: 'Master 1 now, Master 2 in 2026/27. Embedded systems, IoT, hardware–software integration, AI on edge devices.',
+      ar: 'ماستر 1 حالياً، وماستر 2 في 2026/27. أنظمة مدمجة، إنترنت الأشياء، تكامل العتاد والبرمجيات، والذكاء الاصطناعي على الأجهزة الطرفية.',
+    },
+  },
+  {
+    period: '2025 — 2026',
+    title: { en: 'President', ar: 'رئيس' },
+    org: { en: 'Scientific Club Afaq — Bouira University', ar: 'النادي العلمي آفاق — جامعة البويرة' },
+    text: {
+      en: 'Ran the Race Event Challenge: 4 days taking 30+ participants from zero electronics to ESP32 robot cars and a robot-soccer final.',
+      ar: 'نظّمت تحدي السباق: 4 أيام نقلت فيها أكثر من 30 مشاركاً من الصفر إلى سيارات ESP32 روبوتية ونهائي كرة قدم روبوتية.',
+    },
+  },
+  {
+    period: '2024 — 2025',
+    title: { en: 'Arduino & Robotics Instructor', ar: 'مدرّب آردوينو وروبوتيك' },
+    org: { en: 'CLS Bouira', ar: 'CLS البويرة' },
+    text: {
+      en: 'Taught kids aged 10–16, with a curriculum I wrote from “what is an LED” to autonomous line-following cars.',
+      ar: 'درّست أطفالاً بين 10 و16 سنة بمنهج كتبته بنفسي، من «ما هو الـLED» إلى سيارات تتبع الخط الذاتية.',
+    },
+  },
+  {
+    period: '2024 — now',
+    title: { en: 'Agentic AI & full-stack builder', ar: 'مطوّر وكلاء ذكاء اصطناعي وتطبيقات كاملة' },
+    org: { en: 'Independent', ar: 'مستقل' },
+    text: {
+      en: 'Multi-agent dev workflow on a self-hosted Raspberry Pi; school management software shipped in 2 months.',
+      ar: 'سير عمل تطوير متعدد الوكلاء على Raspberry Pi ذاتي الاستضافة؛ وبرنامج تسيير مدارس أُنجز في شهرين.',
+    },
+  },
+];
+
+const FACTS: Array<{ k: L10n; v: L10n }> = [
+  { k: { en: 'Based in', ar: 'المقر' }, v: { en: 'Bouira, Algeria', ar: 'البويرة، الجزائر' } },
+  { k: { en: 'Studying', ar: 'الدراسة' }, v: { en: 'M1 Embedded Systems', ar: 'ماستر 1 أنظمة مدمجة' } },
+  { k: { en: 'Graduating', ar: 'التخرج' }, v: { en: '2027', ar: '2027' } },
+  { k: { en: 'Languages', ar: 'اللغات' }, v: { en: 'Arabic · English · French', ar: 'العربية · الإنجليزية · الفرنسية' } },
+];
 
 export const AboutWindow: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { playClick } = useSound();
-  const [activeTab, setActiveTab] = useState<'story' | 'lab' | 'afaq'>('story');
+  const { openWindow } = useWindowManager();
+  const [activeTab, setActiveTab] = useState<Tab>('story');
 
-  const handleTabChange = (tab: 'story' | 'lab' | 'afaq') => {
+  const tabs: Array<{ id: Tab; label: string }> = [
+    { id: 'story', label: lang === 'ar' ? 'من أنا' : 'Story' },
+    { id: 'experience', label: lang === 'ar' ? 'المسار' : 'Experience' },
+  ];
+
+  const go = (id: WindowId) => {
     playClick();
-    setActiveTab(tab);
+    openWindow(id);
   };
 
   return (
     <Window id="about">
-      <div className="flex flex-col gap-4 font-body text-textDim">
-        {/* 9x Tab Bar */}
-        <div className="flex items-center gap-1 border-b-2 border-slate pb-0 font-pixel text-xs">
-          <button
-            onClick={() => handleTabChange('story')}
-            className={`px-3 py-1.5 border-t-2 border-x-2 border-slate rounded-t ${
-              activeTab === 'story' ? 'bg-panel text-text font-bold -mb-[2px] border-b-0 border-spidey' : 'bg-panel2 text-lavender hover:text-text'
-            }`}
-          >
-            📜 Story & Bio
-          </button>
-
-          <button
-            onClick={() => handleTabChange('lab')}
-            className={`px-3 py-1.5 border-t-2 border-x-2 border-slate rounded-t ${
-              activeTab === 'lab' ? 'bg-panel text-text font-bold -mb-[2px] border-b-0 border-spidey' : 'bg-panel2 text-lavender hover:text-text'
-            }`}
-          >
-            🔬 Hardware Rig
-          </button>
-
-          <button
-            onClick={() => handleTabChange('afaq')}
-            className={`px-3 py-1.5 border-t-2 border-x-2 border-slate rounded-t ${
-              activeTab === 'afaq' ? 'bg-panel text-text font-bold -mb-[2px] border-b-0 border-spidey' : 'bg-panel2 text-lavender hover:text-text'
-            }`}
-          >
-            👑 Afaq Club & Workshops
-          </button>
+      <div className="flex flex-col gap-4">
+        {/* Header card */}
+        <div className="flex items-center gap-4">
+          <div className="win9x-box-recessed p-1.5 shrink-0">
+            <img src={asset('/mascot/idle-01.png')} alt="Pixel Spider, Adam's avatar" className="w-20 h-20 md:w-24 md:h-24 object-contain pixel-art" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <h1 className="font-pixel text-base md:text-lg text-text">{t.about.name}</h1>
+            <p className="text-[13px] text-lavender">{t.about.role}</p>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <button onClick={() => go('projects')} className="win9x-button win9x-button-spidey px-2.5 py-1 font-pixel text-[10px]">
+                🛠 {lang === 'ar' ? 'المشاريع' : 'Projects'}
+              </button>
+              <button onClick={() => go('downloads')} className="win9x-button px-2.5 py-1 font-pixel text-[10px]">
+                📄 {lang === 'ar' ? 'السيرة' : 'Résumé'}
+              </button>
+              <button onClick={() => go('contact')} className="win9x-button px-2.5 py-1 font-pixel text-[10px]">
+                ✉ {lang === 'ar' ? 'تواصل' : 'Contact'}
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Tab 1: Story & Bio */}
+        {/* Tabs */}
+        <div role="tablist" className="flex items-end gap-1 border-b-2 border-slate font-pixel text-[11px]">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => {
+                playClick();
+                setActiveTab(tab.id);
+              }}
+              className={`px-3 border-t-2 border-x-2 border-slate -mb-[2px] ${
+                activeTab === tab.id ? 'bg-panel text-text py-1.5 border-b-2 border-b-panel' : 'bg-panel2 text-lavender py-1 hover:text-text'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {activeTab === 'story' && (
-          <div className="flex flex-col md:flex-row gap-5 items-start">
-            <div className="win9x-box-recessed p-2 bg-panel2 flex-shrink-0 mx-auto md:mx-0 border-2 border-spidey">
-              <img
-                src="/mascot/adam-portrait.png"
-                alt="Khoumari Adam Portrait"
-                className="w-36 h-36 md:w-40 md:h-40 object-contain pixel-art"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="%23171722"/><rect x="20" y="20" width="120" height="120" fill="%231f1f2e" stroke="%23212CF4" stroke-width="2"/><circle cx="80" cy="70" r="30" fill="%23212CF4"/><rect x="45" y="110" width="70" height="30" fill="%230B0B10"/><text x="80" y="75" font-family="monospace" font-size="20" fill="%23FFFFFF" text-anchor="middle">ADAM</text></svg>`;
-                }}
-              />
+          <div role="tabpanel" className="grid md:grid-cols-[1fr_190px] gap-4 select-text">
+            <div className="space-y-3 text-[13px] leading-relaxed">
+              <p>{t.about.p1}</p>
+              <p>{t.about.p2}</p>
+              <p>{t.about.p3}</p>
             </div>
-
-            <div className="flex-1 space-y-3 font-body">
+            <dl className="win9x-box-recessed p-3 space-y-2 text-[12px] self-start">
+              {FACTS.map((f) => (
+                <div key={f.k.en}>
+                  <dt className="font-pixel text-[9px] uppercase tracking-wider text-lavender/70">{f.k[lang]}</dt>
+                  <dd className="text-text">{f.v[lang]}</dd>
+                </div>
+              ))}
               <div>
-                <h1 className="font-pixel text-base md:text-lg text-text mb-0.5">
-                  {t.about.name}
-                </h1>
-                <p className="font-pixel text-[10px] text-lavender uppercase tracking-wider">
-                  {t.about.role}
-                </p>
+                <dt className="font-pixel text-[9px] uppercase tracking-wider text-lavender/70">Email</dt>
+                <dd>
+                  <a href={`mailto:${PROFILE.email}`} className="text-green underline underline-offset-2 break-all">
+                    {PROFILE.email}
+                  </a>
+                </dd>
               </div>
-
-              <div className="win9x-box-recessed p-3 bg-panel2 space-y-2 text-xs leading-relaxed border border-slate/50">
-                <p>{t.about.p1}</p>
-                <p>{t.about.p2}</p>
-                <p>{t.about.p3}</p>
-              </div>
-            </div>
+            </dl>
           </div>
         )}
 
-        {/* Tab 2: Hardware Rig */}
-        {activeTab === 'lab' && (
-          <div className="space-y-4 font-mono text-xs">
-            <div className="win9x-box-recessed p-4 bg-panel2 space-y-3 border border-slate">
-              <h3 className="font-pixel text-xs text-yellow">💻 Primary Development Workstation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-textDim">
-                <p>• Microcontrollers: <span className="text-green">ESP32-WROOM-32 / STM32F4</span></p>
-                <p>• Single-Board Server: <span className="text-green">Raspberry Pi 4B (8GB)</span></p>
-                <p>• Sensors & Instruments: <span className="text-green">Capacitive Moisture / DSO Oscilloscope</span></p>
-                <p>• Prototyping: <span className="text-green">Custom Soldering Station / PCB Layout</span></p>
-              </div>
-            </div>
-
-            <div className="win9x-box-recessed p-3 bg-base border border-spidey flex justify-between items-center text-xs">
-              <span className="text-lavender">LAB STATUS: 24/7 AGENTIC WORKFLOW ONLINE</span>
-              <span className="text-green font-pixel text-[10px]">OK 100%</span>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Afaq Presidency & Leadership */}
-        {activeTab === 'afaq' && (
-          <div className="space-y-3 text-xs font-body">
-            <div className="win9x-box-recessed p-3 bg-panel2 border border-slate space-y-2">
-              <h3 className="font-pixel text-xs text-yellow">👑 President — Scientific Club Afaq (2025–2026)</h3>
-              <p className="text-textDim leading-relaxed">
-                Led Bouira University's flagship scientific student club. Organized university hackathons, embedded systems workshops, and guided 150+ students through hands-on technology projects.
-              </p>
-            </div>
-
-            <div className="win9x-box-recessed p-3 bg-panel2 border border-slate space-y-2">
-              <h3 className="font-pixel text-xs text-green">🤖 Robotics Instructor — CLS Bouira</h3>
-              <p className="text-textDim leading-relaxed">
-                Taught Arduino, sensor wiring, and motor driver circuitry to kids and beginners. Designed the 4-day Rocket League autonomous car competition curriculum.
-              </p>
-            </div>
-          </div>
+        {activeTab === 'experience' && (
+          <ol role="tabpanel" className="relative border-s-2 border-spidey/60 ms-2 space-y-4 select-text">
+            {TIMELINE.map((item) => (
+              <li key={item.period + item.title.en} className="ps-4 relative">
+                <span className="absolute -start-[7px] top-1 w-3 h-3 bg-spidey border-2 border-lavender" aria-hidden="true" />
+                <p className="font-mono text-[11px] text-yellow">{item.period}</p>
+                <h3 className="font-pixel text-xs text-text mt-0.5">{item.title[lang]}</h3>
+                <p className="text-[12px] text-lavender">{item.org[lang]}</p>
+                <p className="text-[13px] leading-relaxed mt-1">{item.text[lang]}</p>
+              </li>
+            ))}
+          </ol>
         )}
       </div>
     </Window>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
+import { asset } from '@/lib/asset';
 
 interface BootSequenceProps {
   onComplete: () => void;
@@ -150,7 +151,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
                 <div className="w-0.5 h-16 bg-[#212CF4] animate-pulse" />
                 {/* Mascot image */}
                 <img
-                  src="/mascot/swinging-01.png"
+                  src={asset('/mascot/swinging-01.png')}
                   alt="Pixel Spider Boot Entrance"
                   className="w-20 h-20 pixel-art drop-shadow-[0_0_12px_rgba(33,44,244,0.8)]"
                 />
@@ -162,6 +163,15 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Recruiter fast path */}
+        <a
+          href={asset('/resume/')}
+          onClick={(e) => e.stopPropagation()}
+          className="self-start mb-3 font-pixel text-[10px] md:text-xs text-[#FFE55C] underline underline-offset-4 hover:text-white"
+        >
+          Recruiter in a hurry? → Plain résumé
+        </a>
 
         {/* Bottom Progress Bar */}
         <div className="border border-[#72FFB4]/40 p-1 bg-[#1f1f2e]">
