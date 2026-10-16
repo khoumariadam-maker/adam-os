@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# The main site is deployed by Vercel from `main`. This mirror on GitHub Pages is optional:
+# enable Settings → Pages → Source: GitHub Actions, then run this workflow from the Actions tab
+# (or add `push: branches: [main]` here to deploy on every push).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

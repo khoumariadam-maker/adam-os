@@ -9,7 +9,7 @@ export const PROFILE = {
   email: 'khoumariadam@gmail.com',
   github: 'https://github.com/khoumariadam-maker',
   linkedin: '',
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://khoumariadam-maker.github.io/adam-os',
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://adam-os-two.vercel.app',
   resumes: {
     en: { path: '/resumes/Khoumari_Adam_CV_EN.pdf', download: 'Khoumari_Adam_Resume_EN.pdf' },
     ar: { path: '/resumes/Khoumari_Adam_CV_AR.pdf', download: 'Khoumari_Adam_Resume_AR.pdf' },

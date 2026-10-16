@@ -54,8 +54,8 @@ The visual tests compare desktop and phone screenshots (dark, classic, Arabic, P
 
 It's a fully static export, so it needs no server.
 
-- **GitHub Pages:** `.github/workflows/deploy.yml` builds and deploys on every push to `main`. One-time setup: *Settings → Pages → Source: GitHub Actions*. The workflow sets the `/adam-os` base path for you.
-- **Vercel / Netlify:** import the repo. The build command is `npm run build` and the output directory is `out`.
+- **Vercel (live site):** https://adam-os-two.vercel.app redeploys automatically on every push to `main`. The build command is `npm run build` and the output directory is `out`.
+- **GitHub Pages (optional mirror):** turn on *Settings → Pages → Source: GitHub Actions*, then run **Deploy to GitHub Pages** from the Actions tab. The workflow sets the `/adam-os` base path for you.
 
 Environment variables (both optional):
 
