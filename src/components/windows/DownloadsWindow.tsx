@@ -6,6 +6,8 @@ import { Window } from '../Window';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
 import { useMascot } from '@/context/MascotContext';
+import { PROFILE } from '@/lib/profile';
+import { asset } from '@/lib/asset';
 
 interface DownloadsWindowProps {
   onTriggerTheater?: (file: 'en' | 'ar') => void;
@@ -80,12 +82,8 @@ export const DownloadsWindow: React.FC<DownloadsWindowProps> = ({ onTriggerTheat
 
       // Step 6 — Actual download trigger
       setTimeout(() => {
-        const pdfPath = file === 'en'
-          ? '/resumes/Khoumari_Adam_CV_EN.pdf'
-          : '/resumes/Khoumari_Adam_CV_AR.pdf';
-        const fileName = file === 'en'
-          ? 'Khoumari_Adam_Resume_EN.pdf'
-          : 'Khoumari_Adam_Resume_AR.pdf';
+        const pdfPath = asset(PROFILE.resumes[file].path);
+        const fileName = PROFILE.resumes[file].download;
         const a = document.createElement('a');
         a.href = pdfPath;
         a.download = fileName;
@@ -146,12 +144,12 @@ export const DownloadsWindow: React.FC<DownloadsWindowProps> = ({ onTriggerTheat
                       transition={{ duration: STEP_THROW / 1000, ease: 'easeOut' }}
                       className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
                     >
-                      <img src="/icons/file-pdf.png" alt="" className="w-8 h-8 pixel-art" />
+                      <img src={asset('/icons/file-pdf.png')} alt="" className="w-8 h-8 pixel-art" />
                     </motion.div>
                   )}
                 </AnimatePresence>
                 <img
-                  src="/icons/file-pdf.png"
+                  src={asset('/icons/file-pdf.png')}
                   alt="PDF Icon"
                   className="w-8 h-8 pixel-art"
                   onError={(e) => {
@@ -207,12 +205,12 @@ export const DownloadsWindow: React.FC<DownloadsWindowProps> = ({ onTriggerTheat
                       transition={{ duration: STEP_THROW / 1000, ease: 'easeOut' }}
                       className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
                     >
-                      <img src="/icons/file-pdf.png" alt="" className="w-8 h-8 pixel-art" />
+                      <img src={asset('/icons/file-pdf.png')} alt="" className="w-8 h-8 pixel-art" />
                     </motion.div>
                   )}
                 </AnimatePresence>
                 <img
-                  src="/icons/file-pdf.png"
+                  src={asset('/icons/file-pdf.png')}
                   alt="PDF Icon"
                   className="w-8 h-8 pixel-art"
                   onError={(e) => {

@@ -1,0 +1,36 @@
+{
+  "idle": {
+    "frames": 4,
+    "fps": 4,
+    "blinkFrame": 4,
+    "stripFrames": 5
+  },
+  "blink": {
+    "frames": 4,
+    "fps": 4
+  },
+  "loading": {
+    "frames": 4,
+    "fps": 8
+  },
+  "celebrating": {
+    "frames": 4,
+    "fps": 6
+  },
+  "sleeping": {
+    "frames": 4,
+    "fps": 3
+  },
+  "typing": {
+    "frames": 4,
+    "fps": 8
+  },
+  "waving": {
+    "frames": 6,
+    "fps": 6
+  },
+  "swinging": {
+    "frames": 4,
+    "fps": 8
+  }
+}

@@ -28,7 +28,7 @@ async function processIcons() {
 async function processMascot() {
   console.log('--- Crushing Mascot Frames to 256x256 PNG-8 ---');
   if (!fs.existsSync(MASCOT_DIR)) return;
-  const files = fs.readdirSync(MASCOT_DIR).filter(f => f.endsWith('.png'));
+  const files = fs.readdirSync(MASCOT_DIR).filter(f => f.endsWith('.png') && !f.endsWith('-strip.png')); // strips are multi-frame sheets
 
   for (const file of files) {
     const filePath = path.join(MASCOT_DIR, file);
