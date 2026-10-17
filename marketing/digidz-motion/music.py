@@ -111,6 +111,32 @@ for i in range(3): add(blip(1800, .07), 30.2 + 2.75 + 1.2 * i, .12)
 add(impact(), 34.0, .6)
 add(pad(prog[0], 2.0), 34.0, .22)
 
+
+# extra sfx for the v2 edit
+def glitch_sfx(length=.45):
+    x = rng.standard_normal(int(length * SR))
+    k = np.arange(len(x)) / SR
+    gate = (np.floor(k * 40) % 3 != 0).astype(float)
+    return np.sign(x) * .5 * gate * np.exp(-k * 3) + np.sin(2 * np.pi * 180 * k) * .4 * gate * np.exp(-k * 4)
+
+def riser(length=3.0):
+    k = np.arange(int(length * SR)) / SR
+    f = 200 + 1600 * (k / length) ** 2
+    s = np.sin(2 * np.pi * np.cumsum(f) / SR) * .3 + lp(rng.standard_normal(len(k)), .15) * .8
+    return s * (k / length) ** 2
+
+def ding(f=1760, length=1.2):
+    k = np.arange(int(length * SR)) / SR
+    return (np.sin(2 * np.pi * f * k) + .5 * np.sin(2 * np.pi * f * 2.01 * k)) * np.exp(-k * 4)
+
+add(glitch_sfx(), 21.4 - .22, .5)
+add(glitch_sfx(.2), 5.45, .35)
+add(riser(2.6), 30.2 - 2.6, .35)
+add(ding(1760), 7.6 + 2.15, .18)   # coin lands
+add(ding(2093), 21.4 + .9, .18)    # shield check
+add(ding(1568), 26.8 + 1.6, .15)   # price drop
+add(impact(), 5.45, .5)            # X stamp
+
 # fades + normalize + soft clip
 fade = np.ones(n); fo = int(1.5 * SR); fade[-fo:] = np.linspace(1, 0, fo)
 mix *= fade[:, None]
