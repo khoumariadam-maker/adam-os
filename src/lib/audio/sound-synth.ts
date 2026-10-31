@@ -178,6 +178,40 @@ class SoundSynth {
     osc.stop(now + 0.2);
   }
 
+  // Short pitch sweep used by the mascot's sounds below.
+  private sweep(type: OscillatorType, from: number, to: number, dur: number, vol = 0.07) {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, now);
+    osc.frequency.exponentialRampToValueAtTime(to, now + dur);
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur);
+  }
+
+  // Mascot: hop up
+  public playBoing() {
+    this.sweep('square', 220, 660, 0.14, 0.05);
+  }
+
+  // Mascot: landing after a fall or throw
+  public playThud() {
+    this.sweep('triangle', 160, 45, 0.18, 0.12);
+  }
+
+  // Mascot: petting / hearts
+  public playPop() {
+    this.sweep('sine', 900, 1500, 0.08, 0.06);
+  }
+
   public playDownloadFanfare() {
     if (this.isMuted) return;
     this.initCtx();

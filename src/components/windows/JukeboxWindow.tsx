@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import { Window } from '../Window';
 import { useSound } from '@/context/SoundContext';
+import { useMascot } from '@/context/MascotContext';
 
 export const JukeboxWindow: React.FC = () => {
   const { playSpidermanTheme, playBootChime, playDownloadFanfare, playSwing, isMuted, toggleSound } = useSound();
+  const mascot = useMascot();
   const [activeTrack, setActiveTrack] = useState<string | null>(null);
 
   const tracks = [
@@ -36,6 +38,7 @@ export const JukeboxWindow: React.FC = () => {
   ];
 
   const handlePlay = (track: typeof tracks[0]) => {
+    mascot.react('dance', undefined, 3200);
     setActiveTrack(track.id);
     track.action();
     setTimeout(() => setActiveTrack(null), 3000);

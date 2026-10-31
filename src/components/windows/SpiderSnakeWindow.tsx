@@ -112,7 +112,7 @@ export const SpiderSnakeWindow: React.FC = () => {
           playError();
           setIsGameOver(true);
           setIsPlaying(false);
-          mascot.setFrame('sleeping');
+          mascot.setFrame('dizzy');
           mascot.setSpeechText('Ouch! Hit the wall. Press START to retry!');
           return prevSnake;
         }
@@ -122,7 +122,7 @@ export const SpiderSnakeWindow: React.FC = () => {
           playError();
           setIsGameOver(true);
           setIsPlaying(false);
-          mascot.setFrame('sleeping');
+          mascot.setFrame('surprised');
           mascot.setSpeechText('Caught in your own web! Game Over.');
           return prevSnake;
         }
