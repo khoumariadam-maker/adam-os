@@ -99,6 +99,6 @@ export const isAnimMeta = (v: unknown): v is AnimMeta => {
 // Where things are inside a 256px frame (fractions, so they scale with the display size).
 export const SPRITE_GEOMETRY = {
   headTop: 18 / 256, // top of the hair
-  feet: 238 / 256, // bottom of the feet
+  feet: 236 / 256, // bottom of the feet
   centerX: 127 / 256,
 };

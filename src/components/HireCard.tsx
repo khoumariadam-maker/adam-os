@@ -44,7 +44,7 @@ export const HireCard: React.FC<{ variant: 'desktop' | 'mobile' }> = ({ variant 
     return (
       <section className="m-3 mb-2 win9x-box-raised p-3 space-y-3" aria-label="About Khoumari Adam">
         <div className="flex items-center gap-3">
-          <img src={asset('/mascot/idle-01.png')} alt="" className="w-14 h-14 pixel-art bg-panel2 border border-slate" />
+          <img src={asset('/mascot/idle-01.png')} alt="" className="w-14 h-14 bg-panel2 border border-slate" />
           <div className="min-w-0">
             <h1 className="font-pixel text-sm text-text">{ar ? PROFILE.nameAr : PROFILE.name}</h1>
             <p className="text-[12px] text-lavender leading-snug">{ar ? PROFILE.roleAr : PROFILE.role}</p>

@@ -143,7 +143,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
                 className="relative"
               >
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-[85%] w-px h-[100vh] bg-lavender/70" />
-                <img src={asset('/mascot/swinging-01.png')} alt="" className="w-20 h-20 md:w-28 md:h-28 pixel-art drop-shadow-[0_0_18px_rgba(94,102,255,0.7)]" />
+                <img src={asset('/mascot/idle-01.png')} alt="" className="w-16 h-16 md:w-32 md:h-32 drop-shadow-[0_0_18px_rgba(94,102,255,0.7)]" />
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15, duration: 0.4 }}>
                 <p className="font-body text-white/80 text-sm md:text-base tracking-[0.3em] uppercase">Khoumari</p>

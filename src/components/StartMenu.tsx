@@ -78,7 +78,7 @@ export const StartMenu: React.FC<StartMenuProps> = ({ isOpen, onClose, onShutdow
 
       <div className="flex-1 py-1 font-pixel text-[11px] text-text">
         <div className="px-2.5 py-2 mb-1 border-b border-slate/40 flex items-center gap-2">
-          <img src={asset('/mascot/idle-01.png')} alt="" className="w-8 h-8 pixel-art bg-panel2 border border-slate/50" />
+          <img src={asset('/mascot/idle-01.png')} alt="" className="w-8 h-8 bg-panel2 border border-slate/50" />
           <div className="min-w-0">
             <p className="truncate">{lang === 'ar' ? PROFILE.nameAr : PROFILE.name}</p>
             <p className="font-body text-[10px] text-lavender truncate">{lang === 'ar' ? PROFILE.roleAr : PROFILE.role}</p>

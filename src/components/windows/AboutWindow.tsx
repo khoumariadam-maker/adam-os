@@ -81,7 +81,7 @@ export const AboutWindow: React.FC = () => {
         {/* Header card */}
         <div className="flex items-center gap-4">
           <div className="win9x-box-recessed p-1.5 shrink-0">
-            <img src={asset('/mascot/idle-01.png')} alt="Pixel Spider, Adam's avatar" className="w-20 h-20 md:w-24 md:h-24 object-contain pixel-art" />
+            <img src={asset('/mascot/idle-01.png')} alt="Pixel Spider, Adam's avatar" className="w-20 h-20 md:w-24 md:h-24 object-contain" />
           </div>
           <div className="min-w-0 space-y-1">
             <h1 className="font-pixel text-base md:text-lg text-text">{t.about.name}</h1>

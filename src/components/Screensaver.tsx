@@ -9,7 +9,7 @@ interface ScreensaverProps {
 }
 
 const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'pointerdown', 'wheel', 'touchstart'] as const;
-const MASCOT_SIZE = 96;
+const MASCOT_SIZE = 128; // exact 2:1 of the 256px art
 const COBALT = '33,44,244';
 const LAVENDER = '195,198,237';
 
@@ -331,12 +331,12 @@ export const Screensaver: React.FC<ScreensaverProps> = ({ enabled, idleMs = 9000
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={mascotRef}
-        src={asset('/mascot/swinging-01.png')}
+        src={asset('/mascot/idle-01.png')}
         alt=""
         width={MASCOT_SIZE}
         height={MASCOT_SIZE}
         draggable={false}
-        className="pixel-art absolute top-0 left-0 will-change-transform pointer-events-none"
+        className="absolute top-0 left-0 will-change-transform pointer-events-none"
         style={{ width: MASCOT_SIZE, height: MASCOT_SIZE, filter: 'drop-shadow(0 0 8px rgba(33,44,244,0.8))' }}
       />
       <div className="absolute bottom-6 left-0 right-0 text-center font-pixel text-[10px] text-lavender/80 tracking-wider pointer-events-none px-4">
