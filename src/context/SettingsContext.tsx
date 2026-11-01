@@ -12,9 +12,10 @@ export interface Settings {
   screensaver: boolean;
   liveWallpaper: boolean;
   customCursor: boolean;
+  mascot: boolean;
 }
 
-const DEFAULTS: Settings = { theme: 'dark', crtBloom: false, scanlines: 30, screensaver: true, liveWallpaper: true, customCursor: true };
+const DEFAULTS: Settings = { theme: 'dark', crtBloom: false, scanlines: 30, screensaver: true, liveWallpaper: true, customCursor: true, mascot: true };
 const KEY = 'adam_os_settings';
 
 interface SettingsContextType {

@@ -121,6 +121,12 @@ export const ControlPanelWindow: React.FC = () => {
                 onChange={(v) => updateSettings({ crtBloom: v })}
               />
               <Toggle
+                label="Pixel Spider"
+                hint="The mascot: drag, throw, pet or right-click him."
+                checked={settings.mascot}
+                onChange={(v) => updateSettings({ mascot: v })}
+              />
+              <Toggle
                 label="Living wallpaper"
                 hint="Twinkling stars, fireflies and drifting clouds (dark theme)."
                 checked={settings.liveWallpaper}

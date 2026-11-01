@@ -40,7 +40,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
   const { openWindow, minimizeAll } = useWindowManager();
   const { t, toggleLanguage, lang } = useLanguage();
   const { toggleSound, isMuted, playClick, playWindowOpen } = useSound();
-  const { changeWallpaper } = useMascot();
+  const { changeWallpaper, sendCommand } = useMascot();
   const { settings, updateSettings } = useSettings();
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -97,6 +97,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
         keywords: 'theme classic dark light win98 grey gray silver appearance',
         run: () => updateSettings({ theme: settings.theme === 'classic' ? 'dark' : 'classic' }),
       },
+      { id: 'spider-pet', label: 'Pet Pixel Spider', hint: 'mascot', glyph: 'star' as IconName, keywords: 'pet spider mascot love', run: () => sendCommand('pet') },
+      { id: 'spider-dance', label: 'Make Pixel Spider dance', hint: 'mascot', glyph: 'jukebox' as IconName, keywords: 'dance spider mascot party music', run: () => sendCommand('dance') },
+      {
+        id: 'spider-toggle',
+        label: settings.mascot ? 'Hide Pixel Spider' : 'Show Pixel Spider',
+        hint: 'mascot',
+        glyph: 'spider' as IconName,
+        keywords: 'spider mascot hide show toggle',
+        run: () => updateSettings({ mascot: !settings.mascot }),
+      },
       { id: 'desktop', label: 'Show desktop (minimize all)', hint: 'windows', glyph: 'desktop' as IconName, keywords: 'show desktop minimize all clear', run: minimizeAll },
       ...WALLPAPERS.map((w) => ({
         id: `wp-${w}`,
@@ -110,7 +120,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
       { id: 'shutdown', label: 'Shut down', hint: 'system', glyph: 'power' as IconName, keywords: 'shutdown power off', run: onShutdown },
     ].map((c) => ({ ...c, section: 'actions' as const }));
     return [...apps, ...actions];
-  }, [openWindow, minimizeAll, toggleLanguage, toggleSound, isMuted, lang, changeWallpaper, onReboot, onShutdown, playWindowOpen, settings.theme, updateSettings]);
+  }, [openWindow, minimizeAll, toggleLanguage, toggleSound, isMuted, lang, changeWallpaper, onReboot, onShutdown, playWindowOpen, settings.theme, settings.mascot, updateSettings, sendCommand]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

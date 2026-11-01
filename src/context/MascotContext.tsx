@@ -1,13 +1,16 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import type { SpiderFrame } from '@/components/PixelSpider';
+import type { SpiderFrame } from '@/components/mascot/anims';
 import { useSound } from './SoundContext';
 import { readStorage, writeStorage } from '@/lib/storage';
 import { MOBILE_BREAKPOINT } from '@/lib/hooks/useIsMobile';
 
 export const WALLPAPERS = ['night-city', 'cyber-forest', 'pixel-mountains', 'y2k-pattern'] as const;
 export type WallpaperName = (typeof WALLPAPERS)[number];
+
+// Things other apps can ask the spider to *do* (not just look like).
+export type MascotCommand = 'pet' | 'dance' | 'nap' | 'hop' | 'wave' | 'home' | 'swing' | 'hide' | 'show';
 
 interface MascotContextType {
   frame: SpiderFrame;
@@ -21,6 +24,9 @@ interface MascotContextType {
   triggerRandomInteraction: () => void;
   notifyWindowEvent: (type: 'open' | 'close' | 'minimize', windowTitle?: string) => void;
   changeWallpaper: (name: WallpaperName) => void;
+  // Latest command for the spider; `id` changes on every send so repeats still fire.
+  command: { type: MascotCommand; id: number } | null;
+  sendCommand: (type: MascotCommand) => void;
 }
 
 const WALLPAPER_KEY = 'adam_os_wallpaper';
@@ -31,6 +37,9 @@ const TIPS: Array<{ frame: SpiderFrame; text: string; sound: 'swing' | 'fanfare'
   { frame: 'typing', text: 'Open Lab.exe to watch a simulated feed from the ESP32 irrigation build.', sound: 'click' },
   { frame: 'waving', text: 'Hiring? Resume.exe has the PDF, and /resume has a plain web version.', sound: 'click' },
   { frame: 'typing', text: "Try 'neofetch' or 'sudo hire-adam' in Terminal.exe.", sound: 'click' },
+  { frame: 'love', text: 'Wiggle your cursor over me to pet me. I purr in 8-bit.', sound: 'click' },
+  { frame: 'dance', text: 'Grab me and throw me! I land on windows too.', sound: 'click' },
+  { frame: 'surprised', text: 'Psst: ↑ ↑ ↓ ↓ ← → ← → B A', sound: 'click' },
   { frame: 'sleeping', text: 'Zzz… drag a window to the screen edge to snap it. Click me to wake up!', sound: 'click' },
 ];
 
@@ -47,6 +56,7 @@ export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
   const [isSwinging, setIsSwinging] = useState<boolean>(false);
   const [activeWallpaper, setActiveWallpaper] = useState<WallpaperName>('night-city');
+  const [command, setCommand] = useState<{ type: MascotCommand; id: number } | null>(null);
   const tipIndex = useRef(0);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,6 +102,8 @@ export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     react(tip.frame, tip.text, tip.frame === 'sleeping' ? 2500 : 1800);
   }, [playSwing, playDownloadFanfare, playClick, react]);
 
+  const sendCommand = useCallback((type: MascotCommand) => setCommand({ type, id: Date.now() + Math.random() }), []);
+
   const notifyWindowEvent = useCallback(
     (type: 'open' | 'close' | 'minimize', windowTitle?: string) => {
       if (type === 'open') react('loading', windowTitle ? `Opening ${windowTitle}…` : undefined, 900);
@@ -113,6 +125,8 @@ export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         triggerRandomInteraction,
         notifyWindowEvent,
         changeWallpaper,
+        command,
+        sendCommand,
       }}
     >
       {children}

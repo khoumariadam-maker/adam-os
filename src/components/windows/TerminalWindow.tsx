@@ -181,6 +181,7 @@ const HELP: { group: HelpGroup; usage: string; desc: string }[] = [
   { group: 'System', usage: 'clear', desc: 'Clear the screen (Ctrl+L)' },
   { group: 'Fun', usage: 'spidey', desc: 'Play the Pixel Spider 8-bit theme ♫' },
   { group: 'Fun', usage: 'spider', desc: 'Trigger a Pixel Spider web swing' },
+  { group: 'Fun', usage: 'pet | dance | nap | jump', desc: 'Play with Pixel Spider' },
   { group: 'Fun', usage: 'matrix', desc: 'Simulated hacker readout (alias: hack)' },
   { group: 'Fun', usage: 'sl', desc: 'ASCII steam locomotive (alias: train)' },
   { group: 'Fun', usage: 'ping', desc: 'Test Spidey-Sense latency' },
@@ -192,7 +193,7 @@ const HELP: { group: HelpGroup; usage: string; desc: string }[] = [
 const COMMAND_NAMES: string[] = [
   'help', 'about', 'bio', 'projects', 'skills', 'neofetch', 'apps', 'open', 'start', 'contact', 'email',
   'github', 'cv', 'resume', 'ls', 'cd', 'pwd', 'cat', 'tree', 'whoami', 'date', 'echo', 'history',
-  'wallpaper', 'reboot', 'clear', 'spidey', 'theme', 'spider', 'matrix', 'hack', 'sl', 'train', 'ping',
+  'wallpaper', 'reboot', 'clear', 'spidey', 'theme', 'spider', 'pet', 'dance', 'nap', 'jump', 'matrix', 'hack', 'sl', 'train', 'ping',
   'coffee', 'sudo', 'exit',
 ];
 
@@ -737,6 +738,22 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
             <p className="text-green text-[10px]">Notes: C4 ➔ Eb4 ➔ F4 ➔ G4 ➔ Eb4 ➔ C4</p>
           </div>
         );
+
+      case 'pet':
+        mascot.sendCommand('pet');
+        return <p className="text-lavender">*pat pat* Pixel Spider is purring in 8-bit.</p>;
+
+      case 'dance':
+        mascot.sendCommand('dance');
+        return <p className="text-lavender">♫ Dance break started. (Psst: try the Konami code.)</p>;
+
+      case 'nap':
+        mascot.sendCommand('nap');
+        return <p className="text-lavender">Zzz… Pixel Spider is napping. Click him to wake him up.</p>;
+
+      case 'jump':
+        mascot.sendCommand('hop');
+        return <p className="text-lavender">Boing!</p>;
 
       case 'spider':
         mascot.triggerRandomInteraction();

@@ -137,7 +137,7 @@ export const ExplorerWindow: React.FC = () => {
                 </div>
                 {selectedFile.type === 'image' ? (
                   <div className="flex justify-center p-2">
-                    <img src={asset(selectedFile.content)} alt="" className="w-28 h-28 object-contain pixel-art border border-slate" />
+                    <img src={asset(selectedFile.content)} alt="" className="w-32 h-32 object-contain border border-slate" />
                   </div>
                 ) : (
                   <pre className="text-green leading-relaxed whitespace-pre-wrap">{selectedFile.content}</pre>

@@ -14,6 +14,9 @@ interface SoundContextType {
   playSwing: () => void;
   playDownloadFanfare: () => void;
   playShutdown: () => void;
+  playBoing: () => void;
+  playThud: () => void;
+  playPop: () => void;
   playSpidermanTheme: () => void;
   stopSpidermanTheme: () => void;
 }
@@ -51,6 +54,9 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playSwing: () => soundSynth.playSwing(),
         playDownloadFanfare: () => soundSynth.playDownloadFanfare(),
         playShutdown: () => soundSynth.playShutdown(),
+        playBoing: () => soundSynth.playBoing(),
+        playThud: () => soundSynth.playThud(),
+        playPop: () => soundSynth.playPop(),
         playSpidermanTheme: () => soundSynth.playSpidermanTheme(),
         stopSpidermanTheme: () => soundSynth.stopSpidermanTheme(),
       }}

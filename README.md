@@ -30,7 +30,12 @@ Phones get a home screen with every app, full-screen app sheets and a bottom tab
 **Look and feel**
 - Two themes: *Spider Night* (dark cobalt) and *Windows 98* (silver, navy and teal). Switch in Settings or with <kbd>Ctrl</kbd>+<kbd>K</kbd> → "theme".
 - One hand-made pixel icon set (`src/lib/pixel-icons.ts`) used for the app icons and every UI glyph. Icons follow the theme colours.
-- The Pixel Spider plays sprite animations (breathing, typing, waving, sleeping…) and sometimes drops onto the title bar of the window you're using.
+- **Pixel Spider**, the mascot, has 19 animations (walk, hop, dance, wave, typing, sleep, love, dizzy, annoyed, surprised, dangle, fall, land…) and a small physics engine:
+  - drag him around on his web and throw him: he falls with gravity, bounces, and lands on the floor or on a window's title bar, then rides along when you move that window (and falls off if you close it)
+  - wiggle the cursor over him to pet him; click him too often and he gets annoyed, then dizzy
+  - he follows the cursor with his eyes, walks along the taskbar, web-swings onto the window you're using, naps when you go idle and wakes up when you come back
+  - right-click him for a menu (pet, dance, jump, wave, web-swing, nap, go home, hide); the terminal has `pet`, `dance`, `nap` and `jump`; the Jukebox makes him dance; the Konami code starts a dance break
+  - he's drawn at exactly half the 256px art size (pixel-perfect on high-DPI screens); hide him in Settings or with Ctrl+K
 - Windows grow out of their icon when opened and shrink into the taskbar when minimized.
 - A BIOS screen, then an "Adam OS 98" splash on first visit.
 - Living wallpapers: twinkling stars, fireflies and drifting clouds, drawn on a low-res canvas so they stay pixel-crisp.
@@ -73,7 +78,7 @@ Environment variables (both optional):
 | Apps on the desktop / Start menu | `src/lib/apps.ts` |
 | Lab demo video | drop a file at `public/lab/demo.mp4` |
 | Icons | edit `src/lib/pixel-icons.ts`, then `python3 scripts/icons/render_icons.py --force` to refresh the desktop PNGs |
-| Mascot animation frames | `python3 scripts/mascot/build_frames.py` (rebuilds `public/mascot/*-strip.png`) |
+| Mascot animation frames | `python3 scripts/mascot/build_frames_v2.py` (rebuilds `public/mascot/v2/*.png` and `anims.json` from `idle-01.png`) |
 | Theme colours | CSS variables at the top of `src/app/globals.css` |
 
 Any path to a file in `public/` must go through `asset()` from `src/lib/asset.ts`, so the site keeps working under a sub-path.

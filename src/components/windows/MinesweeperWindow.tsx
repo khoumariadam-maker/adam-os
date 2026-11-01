@@ -213,7 +213,7 @@ export const MinesweeperWindow: React.FC = () => {
       setBoard(next);
       setStatus('lost');
       playError();
-      mascotSay('sleeping', 'Caught in the web! Click the face to try again.');
+      mascotSay('dizzy', 'Caught in the web! Click the face to try again.');
       return;
     }
     const safeLeft = next.some((c) => !c.mine && !c.revealed);

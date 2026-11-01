@@ -37,7 +37,7 @@ export const APPS: AppDef[] = [
   { id: 'about', title: 'About.exe', icon: '/icons/app-about.png', glyph: 'about', group: 'portfolio', size: { width: 620, height: 480 }, keywords: 'bio story me who adam', onDesktop: true },
   { id: 'projects', title: 'Projects.exe', icon: '/icons/app-projects.png', glyph: 'projects', group: 'portfolio', size: { width: 760, height: 520 }, keywords: 'work builds portfolio case study', onDesktop: true },
   { id: 'skills', title: 'Skills.exe', icon: '/icons/app-skills.png', glyph: 'skills', group: 'portfolio', size: { width: 600, height: 480 }, keywords: 'stack tools tech languages', onDesktop: true },
-  { id: 'lab', title: 'Lab.exe', icon: '/icons/app-lab.png', glyph: 'lab', group: 'portfolio', size: { width: 680, height: 500 }, keywords: 'esp32 telemetry irrigation sensor live demo hardware', onDesktop: true },
+  { id: 'lab', title: 'Lab.exe', icon: '/icons/app-lab.png', glyph: 'lab', group: 'portfolio', size: { width: 700, height: 580 }, keywords: 'esp32 telemetry irrigation sensor live demo hardware', onDesktop: true },
   { id: 'downloads', title: 'Resume.exe', icon: '/icons/app-resume.png', glyph: 'resume', group: 'portfolio', size: { width: 540, height: 420 }, keywords: 'cv resume pdf download', onDesktop: true },
   { id: 'contact', title: 'Contact.exe', icon: '/icons/app-contact.png', glyph: 'contact', group: 'portfolio', size: { width: 500, height: 460 }, keywords: 'email github hire message reach', onDesktop: true },
   { id: 'github', title: 'GitHub.exe', icon: '/icons/app-github.png', glyph: 'github', group: 'portfolio', size: { width: 640, height: 520 }, keywords: 'github code repos commits activity open source git', onDesktop: false },
