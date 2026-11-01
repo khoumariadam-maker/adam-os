@@ -375,3 +375,11 @@ html:has(.os-shell) body {
   background-image: repeating-conic-gradient(rgb(var(--c-panel2)) 0 25%, rgb(var(--c-hilite) / 0.18) 0 50%);
   background-size: 2px 2px;
 }
+
+/* Horizontally scrolling toolbars (Breadboard.exe) without a visible scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -37,6 +37,7 @@ const TIPS: Array<{ frame: SpiderFrame; text: string; sound: 'swing' | 'fanfare'
   { frame: 'swinging', text: 'Thwip! Press Ctrl+K to jump to any app.', sound: 'swing' },
   { frame: 'celebrating', text: 'Adam led the Scientific Club Afaq at Bouira University in 2025–2026.', sound: 'fanfare' },
   { frame: 'typing', text: 'Open Lab.exe to watch a simulated feed from the ESP32 irrigation build.', sound: 'click' },
+  { frame: 'celebrating', text: 'Breadboard.exe is a real 3D circuit simulator. Try an LED without a resistor… 💥', sound: 'fanfare' },
   { frame: 'waving', text: 'Hiring? Resume.exe has the PDF, and /resume has a plain web version.', sound: 'click' },
   { frame: 'typing', text: "Try 'neofetch' or 'sudo hire-adam' in Terminal.exe.", sound: 'click' },
   { frame: 'love', text: 'Wiggle your cursor over me to pet me. I purr in 8-bit.', sound: 'click' },

@@ -23,6 +23,7 @@ import { MinesweeperWindow } from './windows/MinesweeperWindow';
 import { ControlPanelWindow } from './windows/ControlPanelWindow';
 import { ExplorerWindow } from './windows/ExplorerWindow';
 import { PaintWindow } from './windows/PaintWindow';
+import { BreadboardWindow } from './windows/BreadboardWindow';
 import { useWindowManager } from '@/context/WindowManagerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSound } from '@/context/SoundContext';
@@ -227,6 +228,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onReboot }) => {
       <ControlPanelWindow />
       <ExplorerWindow />
       <PaintWindow />
+      <BreadboardWindow />
       <DownloadsWindow onTriggerTheater={handleTriggerTheater} />
       <ContactWindow />
       <GitHubWindow />
