@@ -16,6 +16,7 @@ A Windows 98-style desktop you can actually use: draggable windows, a Start menu
 | Projects.exe | Case studies: why, what I built, result, stack |
 | Skills.exe | Skills mapped to where they were used (no made-up percentages) |
 | Lab.exe | Simulated ESP32 irrigation dashboard: live sparklines, pump logic, wiring diagram, demo video slot |
+| Breadboard.exe | A 3D breadboard circuit simulator: place wires, resistors, LEDs, push buttons and a buzzer, power it from a 9 V or AA battery, and watch it work. See below |
 | Resume.exe | CV download (EN/AR PDF) with a little spider animation |
 | Contact.exe | Email, copy address, GitHub, and a message form that opens your own mail app |
 | Terminal.exe | `help`, `neofetch`, `ls`/`cd`/`cat`, `open <app>`, `sudo hire-adam`, tab completion and history |
@@ -23,6 +24,16 @@ A Windows 98-style desktop you can actually use: draggable windows, a Start menu
 | Paint.exe | Pixel-art editor: drag to draw (finger, pen or mouse), pencil, eraser, fill, eyedropper, line, mirror, undo/redo, 16 or 32 px canvas, autosave, PNG export |
 | Explorer, Jukebox, Settings | Classic accessories. Settings has the theme, wallpapers, living wallpaper, CRT bloom, screensaver and cursor |
 | SpiderSnake, Minesweeper | Games, with best scores saved locally |
+
+**Breadboard.exe** is a real circuit simulator, not an animation. Pick a part, then tap two holes to place its legs. The board's metal strips connect like a real breadboard: every five-hole column in a–e (and in f–j) is one strip, and each power rail is one long strip. Hover a hole (or tap it) to see its strip and its voltage. Behind it is a DC solver using Modified Nodal Analysis, the method SPICE uses, with piecewise-linear LED and buzzer models (`src/lib/circuit/solver.ts`). So:
+- LED brightness follows the real current, and each colour needs its own forward voltage (a blue LED won't light from 3 V)
+- an LED with no resistor flares, flickers and burns out with a puff of smoke (tap it and press *Replace*)
+- LEDs in series share one current, and LEDs in parallel split it unevenly
+- hold a push button to close it; the buzzer beeps through your speakers when current flows the right way
+- wiring + straight to − shows a short-circuit warning and the battery glows hot
+- yellow dots show the current flowing (conventional direction, faster for more current)
+
+It has five example circuits, undo, a top view, a retro pixel mode and an inspector showing current, voltage and tips for the selected part. Phones get a top view for placing parts, the board turned lengthwise and tap-to-place. The 3D engine (three.js via react-three-fiber) only downloads when the app is opened.
 
 Desktop details: snap windows by dragging them to the screen edges, double-click a title bar to maximize, rubber-band select icons, right-click the desktop, use <kbd>Ctrl</kbd>+<kbd>K</kbd> to search everything, and <kbd>Esc</kbd> to close a window. Window positions, the wallpaper and settings are remembered between visits. Returning visitors skip the boot screen (add `?boot` to replay it).
 
@@ -53,6 +64,7 @@ npm run build      # static site in ./out
 npm start          # serve ./out locally
 npm run typecheck
 npm run test:visual   # screenshot tests (run `npm run build` first)
+npm run test:circuit  # checks the circuit solver against hand calculations
 ```
 
 The visual tests compare desktop and phone screenshots (dark, classic, Arabic, Projects, /resume) with the baselines in `tests/visual/__screenshots__/`, and check that phones never scroll sideways. After an intended visual change, update the baselines with `npm run test:visual -- --update-snapshots`. Baselines were made on Linux Chromium; other systems render fonts slightly differently.
@@ -82,11 +94,12 @@ Environment variables (both optional):
 | Icons | edit `src/lib/pixel-icons.ts`, then `python3 scripts/icons/render_icons.py --force` to refresh the desktop PNGs |
 | Mascot animation frames | `python3 scripts/mascot/build_frames_v2.py` (rebuilds `public/mascot/v2/*.png` and `anims.json` from `idle-01.png`) |
 | Theme colours | CSS variables at the top of `src/app/globals.css` |
+| Breadboard example circuits, parts | `src/lib/circuit/presets.ts`, `src/lib/circuit/parts.ts` |
 
 Any path to a file in `public/` must go through `asset()` from `src/lib/asset.ts`, so the site keeps working under a sub-path.
 
 ## Tech
 
-Next.js 14 (app router, static export) · React 18 · TypeScript · Tailwind CSS · Framer Motion. Sounds are synthesized with the Web Audio API, so there are no audio files. There's no backend, no analytics and no cookies.
+Next.js 14 (app router, static export) · React 18 · TypeScript · Tailwind CSS · Framer Motion · three.js with react-three-fiber (Breadboard.exe only, lazy-loaded). Sounds are synthesized with the Web Audio API, so there are no audio files. There's no backend, no analytics and no cookies.
 
 The project started from an AI agent pipeline. The original spec and agent workflows are in `adam-os-spec/` and `.agent/`.

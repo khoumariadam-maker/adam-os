@@ -318,6 +318,97 @@ class SoundSynth {
       osc.stop(now + time + duration);
     });
   }
+  // --- Breadboard.exe -------------------------------------------------------------
+  private buzzOsc: OscillatorNode | null = null;
+  private buzzGain: GainNode | null = null;
+
+  // Continuous active-buzzer tone. level 0 stops it; 0..1 sets loudness.
+  public setBuzzer(level: number) {
+    if (this.isMuted || level <= 0) {
+      if (this.buzzOsc && this.ctx && this.buzzGain) {
+        const t = this.ctx.currentTime;
+        this.buzzGain.gain.cancelScheduledValues(t);
+        this.buzzGain.gain.setTargetAtTime(0, t, 0.015);
+        const osc = this.buzzOsc;
+        osc.stop(t + 0.1);
+        this.buzzOsc = null;
+        this.buzzGain = null;
+      }
+      return;
+    }
+    this.initCtx();
+    if (!this.ctx) return;
+    const vol = 0.012 + 0.03 * Math.min(1, level);
+    if (!this.buzzOsc) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2300, this.ctx.currentTime);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(3200, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0, this.ctx.currentTime);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      this.buzzOsc = osc;
+      this.buzzGain = gain;
+    }
+    this.buzzGain!.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.01);
+  }
+
+  // Sizzle + pop when an LED burns out.
+  public playBurnout() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const len = Math.floor(this.ctx.sampleRate * 0.45);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buf;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(1800, now);
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.09, now);
+    noise.connect(hp);
+    hp.connect(ng);
+    ng.connect(this.ctx.destination);
+    noise.start(now);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(900, now);
+    osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+    g.gain.setValueAtTime(0.16, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    osc.connect(g);
+    g.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  // Short tactile click for push buttons (down = true, up = false).
+  public playTick(down: boolean) {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(down ? 1400 : 1000, now);
+    g.gain.setValueAtTime(0.05, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    osc.connect(g);
+    g.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.03);
+  }
 }
 
 export const soundSynth = new SoundSynth();

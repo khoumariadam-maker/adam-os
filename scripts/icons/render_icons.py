@@ -22,7 +22,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 SRC = os.path.join(ROOT, 'src', 'lib', 'pixel-icons.ts')
 OUT_DIR = os.path.join(ROOT, 'public', 'icons')
 
-APP_ICONS = ['about', 'github', 'projects', 'skills', 'lab', 'resume', 'contact', 'terminal', 'explorer',
+APP_ICONS = ['about', 'github', 'projects', 'skills', 'lab', 'breadboard', 'resume', 'contact', 'terminal', 'explorer',
              'jukebox', 'paint', 'settings', 'snake', 'minesweeper']
 
 DARK = {
