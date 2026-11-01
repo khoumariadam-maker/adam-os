@@ -5,9 +5,13 @@
 // LEDs and the buzzer are diodes, which are not linear. They use a piecewise-linear model
 // (off, or "Vf in series with a small resistance"), and the solver repeats the linear solve
 // until every diode's on/off state agrees with the voltages it produced.
+//
+// Capacitors need time. With a `transient` step the solver uses the backward-Euler
+// companion model: over a step dt a capacitor acts like a conductance C/dt in parallel
+// with a current source that remembers its previous voltage. Without a step they are open.
 
 import { netOf } from './board';
-import { BATTERIES, BUZZER, LED_SPECS, LedColor, Part, SHORT_CIRCUIT_AMPS } from './parts';
+import { BATTERIES, BUZZER, LED_SPECS, LedColor, Part, SHORT_CIRCUIT_AMPS, potOhms } from './parts';
 
 export interface PartResult {
   current: number; // A, flowing from pins[0] to pins[1] through the part
@@ -21,6 +25,7 @@ export interface SolveResult {
   parts: Record<string, PartResult>;
   batteryCurrent: number;
   short: boolean;
+  capV: Record<string, number>; // capacitor voltages (pins[0] − pins[1]) after this step
   // Nets with some path (through any part, open buttons excepted) to the battery.
   reachable: Set<string>;
   iterations: number;
@@ -73,7 +78,12 @@ interface Diode {
   on: boolean;
 }
 
-export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new Set()): SolveResult => {
+export interface Transient {
+  capV: Record<string, number>; // voltages at the end of the previous step
+  dt: number; // seconds
+}
+
+export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new Set(), transient?: Transient): SolveResult => {
   const battery = parts.find((p) => p.kind === 'battery');
   const nets = new Map<string, number>(); // net -> matrix index (ground = -1)
   const ground = battery ? netOf(battery.pins[1]) : null;
@@ -113,6 +123,8 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
         return 1 / R_WIRE;
       case 'resistor':
         return 1 / Math.max(0.1, p.ohms ?? 220);
+      case 'pot':
+        return 1 / potOhms(p);
       case 'button':
         return pressed.has(p.id) ? 1 / R_SWITCH : 0;
       default:
@@ -137,6 +149,18 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
     for (const p of parts) {
       const g = conductance(p);
       if (g > 0) stampG(idx(netOf(p.pins[0])), idx(netOf(p.pins[1])), g);
+    }
+    if (transient) {
+      for (const p of parts) {
+        if (p.kind !== 'cap' || p.burnt) continue;
+        const g = ((p.uf ?? 1000) * 1e-6) / transient.dt;
+        const a = idx(netOf(p.pins[0]));
+        const c = idx(netOf(p.pins[1]));
+        const vPrev = transient.capV[p.id] ?? 0;
+        stampG(a, c, g);
+        if (a >= 0) b[a] += g * vPrev;
+        if (c >= 0) b[c] -= g * vPrev;
+      }
     }
     for (const d of diodes) {
       if (!d.on) continue;
@@ -191,6 +215,7 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
   const results: Record<string, PartResult> = {};
   const diodeById = new Map(diodes.map((d) => [d.part.id, d]));
   let batteryCurrent = 0;
+  const capV: Record<string, number> = {};
   for (const p of parts) {
     const drop = v(netOf(p.pins[0])) - v(netOf(p.pins[1]));
     let current = 0;
@@ -205,6 +230,20 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
       continue;
     }
     const d = diodeById.get(p.id);
+    if (p.kind === 'cap') {
+      if (transient && !p.burnt) {
+        const g = ((p.uf ?? 1000) * 1e-6) / transient.dt;
+        current = g * (drop - (transient.capV[p.id] ?? 0));
+        capV[p.id] = drop;
+      } else capV[p.id] = transient?.capV[p.id] ?? 0;
+      on = Math.abs(current) > 1e-5;
+      results[p.id] = { current, drop: transient ? drop : capV[p.id], power: Math.abs(current * drop), on };
+      continue;
+    }
+    if (p.kind === 'meter') {
+      results[p.id] = { current: 0, drop, power: 0, on: false };
+      continue;
+    }
     if (d) {
       current = d.on ? d.g * (drop - d.vf) : 0;
       on = p.kind === 'buzzer' ? current > BUZZER.minCurrent : current > 1e-4;
@@ -223,7 +262,7 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
       adj.set(b, [...(adj.get(b) ?? []), a]);
     };
     for (const p of parts) {
-      if (p.kind === 'button' && !pressed.has(p.id)) continue;
+      if ((p.kind === 'button' && !pressed.has(p.id)) || p.kind === 'meter') continue;
       link(netOf(p.pins[0]), netOf(p.pins[1]));
     }
     const stack = [netOf(battery.pins[0]), netOf(battery.pins[1])];
@@ -240,6 +279,7 @@ export const solveCircuit = (parts: Part[], pressed: ReadonlySet<string> = new S
     reachable,
     parts: results,
     batteryCurrent,
+    capV,
     short: batteryCurrent > SHORT_CIRCUIT_AMPS,
     iterations,
   };

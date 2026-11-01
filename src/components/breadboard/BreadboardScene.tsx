@@ -20,8 +20,8 @@ import {
   resistorBands,
 } from '@/lib/circuit/parts';
 import type { SolveResult } from '@/lib/circuit/solver';
-import { DESK_Y, V, batteryLeads, bodyShape, layoutOf, ledShape, partPath, pinPos, resistorShape, wireCurve } from './geometry';
-import { batteryLabel, boardTexture, glowTexture, matTexture, smokeTexture } from './textures';
+import { DESK_Y, METER, PROBE_H, V, batteryLeads, bodyShape, capShape, layoutOf, ledShape, meterJacks, partPath, pinPos, probeLead, resistorShape, wireCurve } from './geometry';
+import { batteryLabel, boardTexture, drawLcd, glowTexture, lcdTexture, matTexture, smokeTexture } from './textures';
 
 export type ViewMode = 'angle' | 'top';
 
@@ -45,6 +45,7 @@ export interface SceneProps {
   onPartClick: (id: string) => void;
   onPress: (id: string, down: boolean) => void;
   onToggleBattery: () => void;
+  onKnob: (id: string, pos: number, phase: 'start' | 'move' | 'end') => void;
   onBackgroundClick: () => void;
 }
 
@@ -453,25 +454,196 @@ const Battery: React.FC<PartViewProps & { short: boolean; onToggle: () => void }
   );
 };
 
-const VIEWS: Record<string, React.FC<any>> = { resistor: Resistor, led: Led, button: Button, buzzer: Buzzer, wire: Wire };
+
+// ---- Potentiometer (trimmer style, drag the knob to turn it) ----------------------------------------------
+const Pot: React.FC<PartViewProps> = ({ part, handlers }) => {
+  const l = useMemo(() => layoutOf(part), [part]);
+  const s = useMemo(() => bodyShape(l, 0.5), [l]);
+  const knob = useRef<THREE.Group>(null);
+  const target = (-0.75 + 1.5 * (part.pos ?? 0.5)) * Math.PI;
+  useFrame(() => {
+    if (knob.current) knob.current.rotation.y += (-target - knob.current.rotation.y) * 0.35;
+  });
+  return (
+    <group {...handlers}>
+      {s.legs.map(([a, b], i) => (
+        <Rod key={i} a={a} b={b} r={0.07} />
+      ))}
+      <group position={[l.mid.x, 0, l.mid.z]} rotation={[0, l.angle, 0]}>
+        <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+          <boxGeometry args={[Math.max(2.0, l.span + 0.4), 0.9, 2.0]} />
+          <meshStandardMaterial color="#2c62d8" roughness={0.45} />
+        </mesh>
+        <group ref={knob} position={[0, 0.95, 0]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.75, 0.8, 0.5, 24]} />
+            <meshStandardMaterial color="#f1ede2" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.27, -0.38]} material={mats.dark}>
+            <boxGeometry args={[0.14, 0.04, 0.62]} />
+          </mesh>
+        </group>
+        {/* tick marks for the knob's range */}
+        {[-0.75, -0.375, 0, 0.375, 0.75].map((k, i) => (
+          <mesh key={i} position={[Math.sin(k * Math.PI) * -0.92, 0.96, Math.cos(k * Math.PI) * -0.92]} rotation={[0, -k * Math.PI, 0]} material={mats.white}>
+            <boxGeometry args={[0.05, 0.02, 0.16]} />
+          </mesh>
+        ))}
+        <mesh visible={false} position={[0, 0.7, 0]}>
+          <boxGeometry args={[2.4, 1.6, 2.4]} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+// ---- Electrolytic capacitor -----------------------------------------------------------------------------------
+const Cap: React.FC<PartViewProps> = ({ part, res, handlers, ghost }) => {
+  const l = useMemo(() => layoutOf(part), [part]);
+  const s = useMemo(() => capShape(part, l), [part, l]);
+  const charge = ghost ? 0 : Math.min(1, Math.abs(res?.drop ?? 0) / 9);
+  const ring = useRef<THREE.MeshStandardMaterial>(null);
+  useFrame(() => {
+    if (ring.current) ring.current.emissiveIntensity = 0.1 + charge * 2.2;
+  });
+  const vented = !!part.burnt;
+  return (
+    <group {...handlers}>
+      {s.legs.map(([a, b], i) => (
+        <Rod key={i} a={a} b={b} r={0.05} />
+      ))}
+      <group position={s.base} rotation={[0, l.angle, 0]}>
+        <mesh position={[0, s.h / 2, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[s.r, s.r, s.h, 24]} />
+          <meshStandardMaterial color={vented ? '#3a3236' : '#1f3c8c'} roughness={0.35} metalness={0.15} />
+        </mesh>
+        {/* light stripe marks the − leg */}
+        <mesh position={[s.r * 0.72, s.h / 2, 0]} rotation={[0, 0, 0]}>
+          <cylinderGeometry args={[s.r * 0.32, s.r * 0.32, s.h * 0.98, 10, 1, false]} />
+          <meshStandardMaterial color={vented ? '#5a5258' : '#c9d6f5'} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, s.h + (vented ? 0.12 : 0.01), 0]} material={mats.metal} scale={[1, vented ? 3 : 1, 1]}>
+          <cylinderGeometry args={[s.r * 0.94, s.r * 0.94, 0.04, 24]} />
+        </mesh>
+        {/* charge ring: glows brighter the more charge it holds */}
+        <mesh position={[0, s.h + 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => undefined}>
+          <ringGeometry args={[s.r * 0.55, s.r * 0.78, 24]} />
+          <meshStandardMaterial ref={ring} color="#ffe55c" emissive="#ffd21f" emissiveIntensity={0.1} toneMapped={false} />
+        </mesh>
+        <mesh visible={false} position={[0, s.h / 2, 0]}>
+          <cylinderGeometry args={[s.r + 0.4, s.r + 0.4, s.h + 0.6, 8]} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+// ---- Multimeter with probes -------------------------------------------------------------------------------------
+const formatReading = (v: number) => {
+  const a = Math.abs(v);
+  if (a >= 100) return 'OL';
+  const t = a.toFixed(2);
+  return v < -0.005 ? `-${t}` : t;
+};
+const Meter: React.FC<PartViewProps> = ({ part, res, handlers, ghost }) => {
+  const jacks = useMemo(() => meterJacks(), []);
+  const leads = useMemo(() => [probeLead(jacks.red, part.pins[0]), probeLead(jacks.black, part.pins[1])], [jacks, part.pins]);
+  const geos = useMemo(() => leads.map((c) => new THREE.TubeGeometry(c, 40, 0.08, 6, false)), [leads]);
+  useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
+  const lcd = useMemo(() => lcdTexture(), []);
+  useEffect(() => () => lcd.texture.dispose(), [lcd]);
+  const reading = formatReading(res?.drop ?? 0);
+  useEffect(() => {
+    drawLcd(lcd.canvas, reading, 'V');
+    lcd.texture.needsUpdate = true;
+  }, [reading, lcd]);
+  const { c, size } = METER;
+  const top = c.y + size.y / 2;
+  return (
+    <group {...handlers}>
+      {!ghost && (
+        <group>
+          <mesh position={c} castShadow receiveShadow>
+            <boxGeometry args={[size.x, size.y, size.z]} />
+            <meshStandardMaterial color="#f2c21b" roughness={0.7} />
+          </mesh>
+          <mesh position={[c.x, top + 0.01, c.z]}>
+            <boxGeometry args={[size.x - 0.5, 0.04, size.z - 0.5]} />
+            <meshStandardMaterial color="#26262c" roughness={0.6} />
+          </mesh>
+          <mesh position={[c.x, top + 0.04, c.z - size.z / 2 + 1.25]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[size.x - 1.0, 1.4]} />
+            <meshBasicMaterial map={lcd.texture} toneMapped={false} />
+          </mesh>
+          <group position={[c.x, top + 0.2, c.z + 0.45]}>
+            <mesh castShadow>
+              <cylinderGeometry args={[1.0, 1.05, 0.35, 28]} />
+              <meshStandardMaterial color="#3a3a42" roughness={0.5} />
+            </mesh>
+            <mesh position={[0, 0.2, -0.55]} rotation={[0, 0, 0]} material={mats.white}>
+              <boxGeometry args={[0.16, 0.05, 0.8]} />
+            </mesh>
+          </group>
+          {[jacks.red, jacks.black].map((j, i) => (
+            <mesh key={i} position={j}>
+              <cylinderGeometry args={[0.24, 0.24, 0.12, 14]} />
+              <meshStandardMaterial color={i === 0 ? '#e0242c' : '#18181c'} roughness={0.4} />
+            </mesh>
+          ))}
+        </group>
+      )}
+      {geos.map((g, i) => (
+        <mesh key={i} geometry={g} material={wireMat(i === 0 ? 'red' : 'black')} castShadow />
+      ))}
+      {part.pins.map((h, i) => {
+        const p = pinPos(h);
+        return (
+          <group key={h + i} position={[p.x, 0, p.z]}>
+            <mesh position={[0, 0.3, 0]} material={mats.metal}>
+              <cylinderGeometry args={[0.04, 0.04, 0.7, 6]} />
+            </mesh>
+            <mesh position={[0, 0.65 + (PROBE_H - 0.6) / 2, 0]} castShadow>
+              <cylinderGeometry args={[0.2, 0.14, PROBE_H - 0.6, 12]} />
+              <meshStandardMaterial color={i === 0 ? '#e0242c' : '#202024'} roughness={0.45} />
+            </mesh>
+            <mesh visible={false} position={[0, 1.2, 0]}>
+              <cylinderGeometry args={[0.5, 0.5, 2.6, 6]} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+};
+
+const VIEWS: Record<string, React.FC<any>> = { resistor: Resistor, led: Led, button: Button, buzzer: Buzzer, wire: Wire, pot: Pot, cap: Cap, meter: Meter };
 
 // ---- Flowing current ----------------------------------------------------------------------------------
 const MAX_DOTS = 900;
 const Current: React.FC<{ parts: Part[]; result: SolveResult }> = ({ parts, result }) => {
   const mesh = useRef<THREE.InstancedMesh>(null);
-  const flows = useMemo(() => {
-    const out: { pts: THREE.Vector3[]; cum: number[]; len: number; speed: number }[] = [];
+  // Paths only change with the parts; speeds change with every solve (capacitors update each frame).
+  const paths = useMemo(() => {
+    const out = new Map<string, { pts: THREE.Vector3[]; cum: number[]; len: number }>();
     for (const p of parts) {
-      const r = result.parts[p.id];
-      if (!r || Math.abs(r.current) < 2e-4) continue;
+      if (p.kind === 'meter') continue;
       const pts = partPath(p).map((v) => v.clone().add(V(0, 0.02, 0)));
       const cum = [0];
       for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
-      const mA = Math.abs(r.current) * 1000;
-      out.push({ pts, cum, len: cum[cum.length - 1], speed: Math.sign(r.current) * (0.8 + 1.5 * Math.log10(1 + mA)) });
+      out.set(p.id, { pts, cum, len: cum[cum.length - 1] });
     }
     return out;
-  }, [parts, result]);
+  }, [parts]);
+  const flows = useMemo(() => {
+    const out: { pts: THREE.Vector3[]; cum: number[]; len: number; speed: number }[] = [];
+    paths.forEach((path, id) => {
+      const r = result.parts[id];
+      if (!r || Math.abs(r.current) < 2e-4) return;
+      const mA = Math.abs(r.current) * 1000;
+      out.push({ ...path, speed: Math.sign(r.current) * (0.8 + 1.5 * Math.log10(1 + mA)) });
+    });
+    return out;
+  }, [paths, result]);
   const tmp = useMemo(() => new THREE.Object3D(), []);
   useFrame(({ clock }) => {
     const m = mesh.current;
@@ -749,7 +921,31 @@ const World: React.FC<SceneProps & { pressing: React.MutableRefObject<boolean> }
       props.onPartClick(p.id);
     },
     onPointerDown:
-      p.kind === 'button' && interactive !== 'delete'
+      p.kind === 'pot' && interactive === 'select'
+        ? (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            pressing.current = true;
+            const x0 = e.nativeEvent.clientX;
+            const y0 = e.nativeEvent.clientY;
+            const start = p.pos ?? 0.5;
+            let moved = false;
+            props.onKnob(p.id, start, 'start');
+            const move = (ev: PointerEvent) => {
+              const d = (ev.clientX - x0 - (ev.clientY - y0)) / 160;
+              if (Math.abs(d) > 0.02) moved = true;
+              if (moved) props.onKnob(p.id, Math.min(1, Math.max(0, start + d)), 'move');
+            };
+            const up = () => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', up);
+              window.removeEventListener('pointercancel', up);
+              props.onKnob(p.id, start, 'end');
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+            window.addEventListener('pointercancel', up);
+          }
+        : p.kind === 'button' && interactive !== 'delete'
         ? (e: ThreeEvent<PointerEvent>) => {
             if (interactive === 'place') return;
             e.stopPropagation();
@@ -798,8 +994,8 @@ const World: React.FC<SceneProps & { pressing: React.MutableRefObject<boolean> }
         .map((b) => {
           const p = parts.find((q) => q.id === b.id);
           if (!p) return null;
-          const s = ledShape(layoutOf(p));
-          return <Smoke key={`${b.id}-${b.at}`} at={b.at} pos={s.top} />;
+          const pos = p.kind === 'cap' ? capShape(p, layoutOf(p)).top : ledShape(layoutOf(p)).top;
+          return <Smoke key={`${b.id}-${b.at}`} at={b.at} pos={pos} />;
         })}
       <CameraRig view={props.view} nonce={props.viewNonce} pressing={pressing} />
     </>

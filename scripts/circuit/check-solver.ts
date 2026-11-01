@@ -73,6 +73,42 @@ const R_WIRE = 0.02;
   near('floating parts carry no current', Math.abs(r.parts.r1.current) + Math.abs(r.parts.l1.current), 0, 1e-7);
 }
 
+// Potentiometer at 25 % of 10 kΩ is a 2.5 kΩ resistor.
+{
+  const r = solveCircuit([bat(), { id: 'p1', kind: 'pot', pins: ['tp5', 'tn5'], ohms: 10000, pos: 0.25 }]);
+  near('potentiometer current', r.batteryCurrent, 9 / (2500 + R_INT_9V), 1e-7);
+}
+// RC charging: after one time constant a capacitor reaches 63.2 % of the supply.
+{
+  const parts: Part[] = [bat(), res('r1', 'tp5', 'a5', 1000), { id: 'c1', kind: 'cap', pins: ['b5', 'tn5'], uf: 1000 }];
+  const tau = (1000 + R_INT_9V) * 1000e-6;
+  let capV: Record<string, number> = {};
+  const dt = 0.0005;
+  for (let t = 0; t < tau - dt / 2; t += dt) capV = solveCircuit(parts, new Set(), { capV, dt }).capV;
+  near('RC charge after one tau', capV.c1, 9 * (1 - Math.exp(-1)), 0.01);
+  // ...and it discharges back through a resistor once the battery is switched off.
+  const off: Part[] = [bat('9v', false), res('r1', 'tp5', 'a5', 1000), { id: 'c1', kind: 'cap', pins: ['b5', 'tn5'], uf: 1000 }, res('r2', 'c5', 'tn7', 1000)];
+  const v0 = capV.c1;
+  for (let t = 0; t < 1 - dt / 2; t += dt) capV = solveCircuit(off, new Set(), { capV, dt }).capV;
+  near('RC discharge after one tau', capV.c1, v0 * Math.exp(-1), 0.01);
+}
+// Capacitor is an open circuit once fully charged (no DC current).
+{
+  const parts: Part[] = [bat(), res('r1', 'tp5', 'a5', 100), { id: 'c1', kind: 'cap', pins: ['b5', 'tn5'], uf: 10 }];
+  let capV: Record<string, number> = {};
+  let last = solveCircuit(parts, new Set(), { capV, dt: 0.001 });
+  for (let i = 0; i < 200; i++) {
+    last = solveCircuit(parts, new Set(), { capV, dt: 0.001 });
+    capV = last.capV;
+  }
+  near('charged capacitor blocks DC', last.batteryCurrent, 0, 1e-6);
+}
+// A multimeter draws no current and reads the voltage between its probes.
+{
+  const r = solveCircuit([bat(), res('r1', 'tp5', 'a5', 1000), res('r2', 'b5', 'b9', 1000), wire('w1', 'a9', 'tn9'), { id: 'm', kind: 'meter', pins: ['d5', 'tn14'] }]);
+  near('meter reads the midpoint', r.parts.m.drop, (9 * 1000) / (2000 + R_INT_9V + R_WIRE), 1e-4);
+}
+
 if (failures) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

@@ -18,6 +18,11 @@ import {
   BATTERIES,
   BUZZER,
   BatteryType,
+  CAP_REVERSE_LIMIT,
+  CAP_VALUES,
+  POT_VALUES,
+  formatFarads,
+  potOhms,
   LED_BURN,
   LED_FULL_BRIGHT,
   LED_HOT,
@@ -38,7 +43,7 @@ import {
   partTitle,
 } from '@/lib/circuit/parts';
 import { BATTERY_PART, PRESETS } from '@/lib/circuit/presets';
-import { solveCircuit } from '@/lib/circuit/solver';
+import { SolveResult, solveCircuit } from '@/lib/circuit/solver';
 import type { SceneProps, ViewMode } from '../breadboard/BreadboardScene';
 
 const BreadboardScene = dynamic(() => import('../breadboard/BreadboardScene'), {
@@ -52,10 +57,10 @@ type PlaceKind = Exclude<PartKind, 'battery'>;
 type Tool = 'select' | 'delete' | PlaceKind;
 
 const STORE_KEY = 'adam_os_breadboard_v1';
-const PLACE_TOOLS: PlaceKind[] = ['wire', 'resistor', 'led', 'button', 'buzzer'];
+const PLACE_TOOLS: PlaceKind[] = ['wire', 'resistor', 'led', 'button', 'buzzer', 'pot', 'cap', 'meter'];
 
 // ---- tiny line-art glyphs for the toolbar ------------------------------------------------------------
-const Glyph: React.FC<{ kind: Tool | 'battery' | 'undo' | 'view' | 'flow' | 'pixel' | 'flip' }> = ({ kind }) => {
+const Glyph: React.FC<{ kind: Tool | 'battery' | 'undo' | 'view' | 'flow' | 'pixel' | 'flip' | 'move' }> = ({ kind }) => {
   const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'square' as const, strokeLinejoin: 'miter' as const };
   return (
     <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden className="shrink-0">
@@ -93,6 +98,26 @@ const Glyph: React.FC<{ kind: Tool | 'battery' | 'undo' | 'view' | 'flow' | 'pix
       {kind === 'flow' && <path {...p} d="M1 8h3M6 8h3M11 8h4M12 5l3 3-3 3" />}
       {kind === 'pixel' && <path fill="currentColor" d="M2 2h4v4H2zM6 6h4v4H6zM10 10h4v4h-4zM10 2h4v4h-4zM2 10h4v4H2z" />}
       {kind === 'flip' && <path {...p} d="M2 5h10l-3-3M14 11H4l3 3" />}
+      {kind === 'move' && <path {...p} d="M8 1v14M1 8h14M8 1L6 3M8 1l2 2M8 15l-2-2M8 15l2-2M1 8l2-2M1 8l2 2M15 8l-2-2M15 8l-2 2" />}
+      {kind === 'pot' && (
+        <>
+          <circle {...p} cx={8} cy={8} r={5.5} />
+          <path {...p} d="M8 8L4.5 4.5" />
+        </>
+      )}
+      {kind === 'cap' && (
+        <>
+          <rect {...p} x={4} y={2} width={8} height={10} />
+          <path {...p} d="M6 12v3M10 12v3M10 4v6" />
+        </>
+      )}
+      {kind === 'meter' && (
+        <>
+          <rect {...p} x={3} y={1} width={10} height={14} />
+          <rect {...p} x={5} y={3} width={6} height={3} />
+          <circle {...p} cx={8} cy={10} r={2} />
+        </>
+      )}
     </svg>
   );
 };
@@ -105,7 +130,14 @@ const TOOL_LABEL: Record<Tool, string> = {
   led: 'LED',
   button: 'Button',
   buzzer: 'Buzzer',
+  pot: 'Pot',
+  cap: 'Capacitor',
+  meter: 'Meter',
 };
+
+// Keyboard shortcuts for the tools.
+const TOOL_KEYS: Record<string, Tool> = { v: 'select', w: 'wire', r: 'resistor', l: 'led', b: 'button', z: 'buzzer', p: 'pot', c: 'cap', m: 'meter', x: 'delete' };
+const KEY_OF = Object.fromEntries(Object.entries(TOOL_KEYS).map(([k, t]) => [t, k.toUpperCase()])) as Record<Tool, string>;
 
 const defaultParts = (): Part[] => [{ ...BATTERY_PART }, ...PRESETS[0].parts.map((p) => ({ ...p }))];
 
@@ -150,7 +182,9 @@ const Breadboard: React.FC = () => {
   const [message, setMessage] = useState<{ text: string; tone: 'info' | 'warn' | 'good' } | null>(null);
   const [lesson, setLesson] = useState<{ title: string; blurb: string } | null>(() => (readJSON<{ parts?: unknown }>(STORE_KEY, {}).parts ? null : { title: PRESETS[0].title, blurb: PRESETS[0].blurb }));
   const [examplesOpen, setExamplesOpen] = useState(false);
-  const [opts, setOpts] = useState<{ ohms: number; led: LedColor; wire: WireColor }>({ ohms: 330, led: 'red', wire: 'red' });
+  const [opts, setOpts] = useState<{ ohms: number; led: LedColor; wire: WireColor; uf: number }>({ ohms: 330, led: 'red', wire: 'red', uf: 1000 });
+  // Properties carried over when a part is moved (applied to the next placement only).
+  const carry = useRef<Partial<Part> | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const autoTopDone = useRef(false);
 
@@ -174,13 +208,48 @@ const Breadboard: React.FC = () => {
     return () => clearTimeout(t);
   }, [message]);
 
-  const result = useMemo(() => solveCircuit(parts, pressed), [parts, pressed]);
+  // Capacitors need time: while any exist, step the solver in real time until things settle.
+  const hasCaps = parts.some((p) => p.kind === 'cap');
+  const dcResult = useMemo(() => (hasCaps ? null : solveCircuit(parts, pressed)), [hasCaps, parts, pressed]);
+  const capV = useRef<Record<string, number>>({});
+  const [stepResult, setStepResult] = useState<SolveResult | null>(null);
+  useEffect(() => {
+    if (!hasCaps) {
+      capV.current = {};
+      setStepResult(null);
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    let quiet = 0;
+    const step = () => {
+      const now = performance.now();
+      const elapsed = Math.min(0.1, Math.max(0.001, (now - last) / 1000));
+      last = now;
+      const n = Math.ceil(elapsed / 0.004);
+      const before = capV.current;
+      let r: SolveResult | null = null;
+      for (let i = 0; i < n; i++) {
+        r = solveCircuit(parts, pressed, { capV: capV.current, dt: elapsed / n });
+        capV.current = r.capV;
+      }
+      const delta = Math.max(0, ...Object.keys(capV.current).map((id) => Math.abs(capV.current[id] - (before[id] ?? 0))));
+      setStepResult(r);
+      quiet = delta < 2e-4 ? quiet + 1 : 0;
+      if (quiet < 20) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [hasCaps, parts, pressed]);
+  const result: SolveResult = dcResult ?? stepResult ?? solveCircuit(parts, pressed, { capV: capV.current, dt: 0.004 });
   const battery = parts.find((p) => p.kind === 'battery')!;
   const selected = parts.find((p) => p.id === selectedId) ?? null;
+  const meter = parts.find((p) => p.kind === 'meter');
 
   const occupied = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of parts) for (const h of p.pins) m.set(h, p.id);
+    // Meter probes just touch the metal, so they don't block a hole.
+    for (const p of parts) if (p.kind !== 'meter') for (const h of p.pins) m.set(h, p.id);
     return m;
   }, [parts]);
 
@@ -191,7 +260,11 @@ const Breadboard: React.FC = () => {
     setPending(null);
     if (t !== 'select') setSelectedId(null);
     if (PLACE_TOOLS.includes(t as PlaceKind)) {
-      flash(`${TOOL_LABEL[t]}: tap the hole for the first leg, then the hole for the second.`);
+      flash(
+        t === 'meter'
+          ? 'Meter: tap where the red probe goes, then where the black probe goes. It shows the voltage between them.'
+          : `${TOOL_LABEL[t]}: tap the hole for the first leg, then the hole for the second.`
+      );
       if (isMobile && view === 'angle' && !autoTopDone.current) {
         autoTopDone.current = true;
         setView('top');
@@ -205,11 +278,16 @@ const Breadboard: React.FC = () => {
     if (kind === 'resistor') base.ohms = opts.ohms;
     if (kind === 'led') base.color = opts.led;
     if (kind === 'wire') base.color = opts.wire;
-    return base;
+    if (kind === 'cap') base.uf = opts.uf;
+    if (kind === 'pot') {
+      base.ohms = 10000;
+      base.pos = 0.5;
+    }
+    return id === 'ghost' || !carry.current ? base : { ...base, ...carry.current, id, kind, pins: [a, b] };
   };
 
   const checkPlacement = (kind: PlaceKind, a: string, b: string): string | null => {
-    if (occupied.has(b)) return 'That hole already has a leg in it.';
+    if (kind !== 'meter' && occupied.has(b)) return 'That hole already has a leg in it.';
     const d = holeDistance(a, b);
     if (d > MAX_SPAN[kind]) return `The ${PART_LABEL[kind].toLowerCase()}'s legs only reach about ${Math.floor(MAX_SPAN[kind])} holes.`;
     return null;
@@ -232,7 +310,7 @@ const Breadboard: React.FC = () => {
     soundSynth.playPop();
     setParts((prev) => prev.filter((q) => q.id !== id));
     if (selectedId === id) setSelectedId(null);
-    flash(`Removed ${partTitle(p).toLowerCase()}.`);
+    flash(`Removed the ${partTitle(p)}.`);
   };
 
   const onHoleClick = (id: string) => {
@@ -248,7 +326,7 @@ const Breadboard: React.FC = () => {
     }
     if (!placing) return;
     if (!pending) {
-      if (owner) {
+      if (owner && placing !== 'meter') {
         playError();
         flash('That hole already has a leg in it.', 'warn');
         return;
@@ -268,10 +346,15 @@ const Breadboard: React.FC = () => {
       return;
     }
     const part = makePart(placing, pending, id);
+    carry.current = null;
     soundSynth.playTick(true);
-    setParts((prev) => [...prev, part]);
+    // Only one multimeter: placing it again moves the probes.
+    setParts((prev) => [...(placing === 'meter' ? prev.filter((p) => p.kind !== 'meter') : prev), part]);
     setPending(null);
-    if (placing !== 'wire' && netOf(part.pins[0]) === netOf(part.pins[1])) {
+    if (placing === 'meter') {
+      flash('Probes placed. The meter shows the red probe’s voltage minus the black probe’s.', 'good');
+      setToolRaw('select');
+    } else if (placing !== 'wire' && netOf(part.pins[0]) === netOf(part.pins[1])) {
       flash(`Both legs are in the same strip, so the ${PART_LABEL[placing].toLowerCase()} is shorted out. Move one leg to another column.`, 'warn');
     } else flash(`${partTitle(part)} placed. Tap two more holes for another, or pick Select.`, 'good');
   };
@@ -314,7 +397,36 @@ const Breadboard: React.FC = () => {
     flash('Undone.');
   }, [flash]);
 
-  const updatePart = (id: string, patch: Partial<Part>) => setParts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const updatePart = (id: string, patch: Partial<Part>, record = true) => setParts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)), record);
+
+  // Pick a part back up: remove it and place a copy (same value/colour) at two new holes.
+  const movePart = (id: string) => {
+    const p = parts.find((q) => q.id === id);
+    if (!p || p.kind === 'battery') return;
+    setParts((prev) => prev.filter((q) => q.id !== id));
+    setSelectedId(null);
+    setToolRaw(p.kind as PlaceKind);
+    setPending(null);
+    const { id: _id, pins: _pins, kind: _kind, ...props } = p;
+    carry.current = { ...props, burnt: false };
+    playClick();
+    flash(`Moving the ${partTitle(p)}: tap the two new holes.`);
+  };
+
+  const onKnob = useCallback(
+    (id: string, pos: number, phase: 'start' | 'move' | 'end') => {
+      if (phase === 'start') {
+        setPartsRaw((prev) => {
+          history.current.push(prev);
+          return prev;
+        });
+        setSelectedId(id);
+      } else if (phase === 'move') {
+        setPartsRaw((prev) => prev.map((p) => (p.id === id ? { ...p, pos } : p)));
+      }
+    },
+    []
+  );
 
   const loadPreset = (i: number) => {
     const preset = PRESETS[i];
@@ -354,6 +466,9 @@ const Breadboard: React.FC = () => {
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         e.preventDefault();
         removePart(selectedId);
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && TOOL_KEYS[e.key.toLowerCase()]) {
+        e.preventDefault();
+        setTool(TOOL_KEYS[e.key.toLowerCase()]);
       } else if (e.key === ' ' && selected?.kind === 'button' && !e.repeat) {
         e.preventDefault();
         press(selected.id, true);
@@ -387,37 +502,46 @@ const Breadboard: React.FC = () => {
     [react]
   );
 
+  // One watcher for anything that can be destroyed: LEDs with too much current, and
+  // electrolytic capacitors connected backwards. Each gets a moment of drama first.
+  const partsRef = useRef(parts);
+  partsRef.current = parts;
   useEffect(() => {
-    const now = performance.now();
-    const over = new Set<string>();
-    for (const p of parts) {
-      if (p.kind !== 'led' || p.burnt) continue;
-      const r = result.parts[p.id];
-      if (r && r.current > LED_BURN) {
-        over.add(p.id);
-        if (!overSince.current.has(p.id)) overSince.current.set(p.id, now);
-      }
-    }
-    overSince.current.forEach((_, id) => !over.has(id) && overSince.current.delete(id));
-    if (!over.size) return;
     const timer = setInterval(() => {
       const t = performance.now();
-      const toBurn: string[] = [];
-      overSince.current.forEach((since, id) => {
-        const amps = resultRef.current.parts[id]?.current ?? 0;
-        // Let it flare (and flicker) for a moment so you see why it pops.
-        if (t - since > (amps > 0.1 ? 1100 : 1800)) toBurn.push(id);
-      });
+      const r = resultRef.current;
+      const over = new Set<string>();
+      const toBurn: Part[] = [];
+      for (const p of partsRef.current) {
+        if (p.burnt) continue;
+        let limit = 0;
+        if (p.kind === 'led') {
+          const amps = r.parts[p.id]?.current ?? 0;
+          if (amps > LED_BURN) limit = amps > 0.1 ? 1100 : 1800;
+        } else if (p.kind === 'cap' && (r.parts[p.id]?.drop ?? 0) < -CAP_REVERSE_LIMIT) limit = 1600;
+        if (!limit) continue;
+        over.add(p.id);
+        const since = overSince.current.get(p.id) ?? t;
+        overSince.current.set(p.id, since);
+        if (t - since > limit) toBurn.push(p);
+      }
+      overSince.current.forEach((_, id) => !over.has(id) && overSince.current.delete(id));
       if (!toBurn.length) return;
-      toBurn.forEach((id) => overSince.current.delete(id));
+      const ids = toBurn.map((p) => p.id);
+      ids.forEach((id) => overSince.current.delete(id));
       soundSynth.playBurnout();
-      setBurns((b) => [...b.filter((x) => t - x.at < 3000), ...toBurn.map((id) => ({ id, at: t }))]);
-      setParts((prev) => prev.map((p) => (toBurn.includes(p.id) ? { ...p, burnt: true } : p)), false);
-      flash('Pop! Too much current burnt out the LED. Add a resistor in series, then tap it and press Replace.', 'warn');
-      say('surprised', 'Pop! 💥 That LED needed a resistor.', 2800, true);
-    }, 50);
+      setBurns((b) => [...b.filter((x) => t - x.at < 3000), ...ids.map((id) => ({ id, at: t }))]);
+      setParts((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, burnt: true } : p)), false);
+      if (toBurn.some((p) => p.kind === 'cap')) {
+        flash('Bang! The capacitor was in backwards. Electrolytic capacitors have a + leg and a − leg (the striped side). Tap it to flip and replace it.', 'warn');
+        say('surprised', 'Bang! 💥 That capacitor was backwards.', 2800, true);
+      } else {
+        flash('Pop! Too much current burnt out the LED. Add a resistor in series, then tap it and press Replace.', 'warn');
+        say('surprised', 'Pop! 💥 That LED needed a resistor.', 2800, true);
+      }
+    }, 80);
     return () => clearInterval(timer);
-  }, [result, parts, flash, say, setParts]);
+  }, [flash, say, setParts]);
 
   const wasShort = useRef(false);
   useEffect(() => {
@@ -486,6 +610,7 @@ const Breadboard: React.FC = () => {
 
   // ---- status line ----------------------------------------------------------------------------------------
   const status = (() => {
+    if (placing === 'meter') return pending ? `Now tap where the black probe goes (red is on ${describeHole(pending)}).` : 'Tap where the red probe goes.';
     if (placing && pending) return `Now tap the hole for the second leg (from ${describeHole(pending)}). Esc cancels.`;
     if (placing) return `Placing ${TOOL_LABEL[placing].toLowerCase()}: tap the first hole.`;
     if (tool === 'delete') return 'Tap a part to delete it.';
@@ -507,7 +632,7 @@ const Breadboard: React.FC = () => {
       key={t}
       onClick={() => setTool(t)}
       aria-pressed={tool === t}
-      title={TOOL_LABEL[t]}
+      title={`${TOOL_LABEL[t]} (${KEY_OF[t]})`}
       className={`win9x-button h-8 px-2 flex items-center gap-1.5 text-[10px] shrink-0 ${tool === t ? 'win9x-button-spidey' : ''}`}
     >
       <Glyph kind={t} />
@@ -543,6 +668,24 @@ const Breadboard: React.FC = () => {
               </option>
             ))}
           </select>
+        </label>
+      );
+    if (tool === 'cap')
+      return (
+        <label className="flex items-center gap-1.5 text-[10px] text-lavender shrink-0">
+          VALUE
+          <select
+            value={opts.uf}
+            onChange={(e) => setOpts((o) => ({ ...o, uf: Number(e.target.value) }))}
+            className="win9x-box-recessed bg-base text-text px-1 py-1 text-[11px] font-mono"
+          >
+            {CAP_VALUES.map((v) => (
+              <option key={v} value={v}>
+                {formatFarads(v)}
+              </option>
+            ))}
+          </select>
+          <span className="font-body text-[11px] text-textDim normal-case">Stripe = − leg</span>
         </label>
       );
     if (tool === 'led')
@@ -661,6 +804,7 @@ const Breadboard: React.FC = () => {
           onHoleClick={onHoleClickWrapped}
           onPartClick={onPartClick}
           onPress={press}
+          onKnob={onKnob}
           onToggleBattery={() => {
             updatePart(battery.id, { on: !battOn });
             playClick();
@@ -679,6 +823,17 @@ const Breadboard: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {meter && !selected && (
+          <button
+            onClick={() => setSelectedId(meter.id)}
+            className={`absolute z-10 win9x-box-raised px-2 py-1 font-mono text-[12px] text-text flex items-center gap-1.5 ${isMobile ? 'top-1 right-1' : 'top-2 right-2'}`}
+            title="Multimeter reading"
+          >
+            <Glyph kind="meter" />
+            {formatVolts(result.parts[meter.id]?.drop ?? 0)}
+          </button>
         )}
 
         {result.short && (
@@ -730,6 +885,7 @@ const Breadboard: React.FC = () => {
             onClose={() => setSelectedId(null)}
             onChange={(patch) => updatePart(selected.id, patch)}
             onDelete={() => removePart(selected.id)}
+            onMove={() => movePart(selected.id)}
             onPress={(down) => press(selected.id, down)}
           />
         )}
@@ -760,8 +916,9 @@ const Inspector: React.FC<{
   onClose: () => void;
   onChange: (patch: Partial<Part>) => void;
   onDelete: () => void;
+  onMove: () => void;
   onPress: (down: boolean) => void;
-}> = ({ part, result, pressed, mobile, onClose, onChange, onDelete, onPress }) => {
+}> = ({ part, result, pressed, mobile, onClose, onChange, onDelete, onMove, onPress }) => {
   const r = result.parts[part.id];
   const current = r?.current ?? 0;
   const drop = r?.drop ?? 0;
@@ -793,6 +950,24 @@ const Inspector: React.FC<{
       else note = { text: `Silent. It needs about ${BUZZER.vf + 0.6} V and a complete loop.`, tone: 'info' };
     }
     if (part.kind === 'button') note = { text: pressed ? 'Pressed: the switch is closed, current can flow.' : 'Released: the switch is open, nothing flows through it.', tone: 'info' };
+    if (part.kind === 'pot') {
+      rows.push(['Resistance now', formatOhms(Math.round(potOhms(part)))], ['Knob', `${Math.round((part.pos ?? 0.5) * 100)}%`]);
+      note = { text: 'Drag the knob in 3D (or use the slider) to change its resistance. Less resistance, more current.', tone: 'info' };
+    }
+    if (part.kind === 'cap') {
+      const v = result.capV[part.id] ?? drop;
+      rows.splice(1, 1, ['Charge', formatVolts(v)]);
+      if (part.burnt) note = { text: 'Vented! It was connected backwards. The striped leg must go to the lower voltage (−).', tone: 'warn' };
+      else if (v < -0.3) note = { text: 'Backwards! The striped (−) leg is at the higher voltage. Flip it before it pops.', tone: 'warn' };
+      else if (current > 1e-4) note = { text: 'Charging: it stores energy like a tiny bucket of electrons.', tone: 'good' };
+      else if (current < -1e-4) note = { text: 'Discharging: it is giving its stored energy back to the circuit.', tone: 'good' };
+      else note = { text: Math.abs(v) > 0.05 ? 'Holding its charge.' : 'Empty. Connect it to a voltage to charge it.', tone: 'info' };
+    }
+    if (part.kind === 'meter') {
+      rows.length = 0;
+      rows.push(['Reading', formatVolts(drop)], ['Red probe', describeHole(part.pins[0])], ['Black probe', describeHole(part.pins[1])]);
+      note = { text: 'A voltmeter shows the difference between its probes and draws no current. Put black on − to measure any point.', tone: 'info' };
+    }
     if (part.kind === 'wire' && Math.abs(current) > 0.5) note = { text: 'Lots of current in this wire. Check for a short.', tone: 'warn' };
   }
 
@@ -831,6 +1006,45 @@ const Inspector: React.FC<{
             {RESISTOR_VALUES.map((v) => (
               <option key={v} value={v}>
                 {formatOhms(v)}
+              </option>
+            ))}
+          </select>
+        )}
+        {part.kind === 'pot' && (
+          <>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((part.pos ?? 0.5) * 100)}
+              onChange={(e) => onChange({ pos: Number(e.target.value) / 100 })}
+              aria-label="Knob position"
+              className="flex-1 min-w-[120px] accent-[rgb(var(--c-spidey))]"
+            />
+            <select
+              value={part.ohms ?? 10000}
+              onChange={(e) => onChange({ ohms: Number(e.target.value) })}
+              aria-label="Potentiometer value"
+              className="win9x-box-recessed bg-base text-text px-1 py-1 text-[11px] font-mono"
+            >
+              {POT_VALUES.map((v) => (
+                <option key={v} value={v}>
+                  {formatOhms(v)}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        {part.kind === 'cap' && (
+          <select
+            value={part.uf ?? 1000}
+            onChange={(e) => onChange({ uf: Number(e.target.value) })}
+            aria-label="Capacitance"
+            className="win9x-box-recessed bg-base text-text px-1 py-1 text-[11px] font-mono"
+          >
+            {CAP_VALUES.map((v) => (
+              <option key={v} value={v}>
+                {formatFarads(v)}
               </option>
             ))}
           </select>
@@ -893,14 +1107,17 @@ const Inspector: React.FC<{
             Hold to press
           </button>
         )}
-        {part.kind === 'led' && part.burnt && (
+        {(part.kind === 'led' || part.kind === 'cap') && part.burnt && (
           <button onClick={() => onChange({ burnt: false })} className="win9x-button h-7 px-2 win9x-button-spidey">
-            Replace LED
+            Replace {part.kind === 'led' ? 'LED' : 'capacitor'}
           </button>
         )}
         {part.kind !== 'battery' && (
           <>
-            {(part.kind === 'led' || part.kind === 'buzzer') && (
+            <button onClick={onMove} className="win9x-button h-7 px-2 flex items-center gap-1">
+              <Glyph kind="move" /> {part.kind === 'meter' ? 'Move probes' : 'Move'}
+            </button>
+            {(part.kind === 'led' || part.kind === 'buzzer' || part.kind === 'cap' || part.kind === 'meter') && (
               <button onClick={() => onChange({ pins: [part.pins[1], part.pins[0]] })} className="win9x-button h-7 px-2 flex items-center gap-1">
                 <Glyph kind="flip" /> Flip
               </button>

@@ -16,7 +16,7 @@ A Windows 98-style desktop you can actually use: draggable windows, a Start menu
 | Projects.exe | Case studies: why, what I built, result, stack |
 | Skills.exe | Skills mapped to where they were used (no made-up percentages) |
 | Lab.exe | Simulated ESP32 irrigation dashboard: live sparklines, pump logic, wiring diagram, demo video slot |
-| Breadboard.exe | A 3D breadboard circuit simulator: place wires, resistors, LEDs, push buttons and a buzzer, power it from a 9 V or AA battery, and watch it work. See below |
+| Breadboard.exe | A 3D breadboard circuit simulator: wires, resistors, LEDs, push buttons, a buzzer, a potentiometer, capacitors and a multimeter, powered by a 9 V or AA battery. See below |
 | Resume.exe | CV download (EN/AR PDF) with a little spider animation |
 | Contact.exe | Email, copy address, GitHub, and a message form that opens your own mail app |
 | Terminal.exe | `help`, `neofetch`, `ls`/`cd`/`cat`, `open <app>`, `sudo hire-adam`, tab completion and history |
@@ -32,8 +32,11 @@ A Windows 98-style desktop you can actually use: draggable windows, a Start menu
 - hold a push button to close it; the buzzer beeps through your speakers when current flows the right way
 - wiring + straight to − shows a short-circuit warning and the battery glows hot
 - yellow dots show the current flowing (conventional direction, faster for more current)
+- drag a potentiometer's knob to dim an LED
+- capacitors charge and discharge in real time (the solver steps through time with a backward-Euler model), so an LED can fade out after you let go of a button; plug one in backwards and it vents with a bang
+- the multimeter's red and black probes go in any two holes and its LCD shows the voltage between them
 
-It has five example circuits, undo, a top view, a retro pixel mode and an inspector showing current, voltage and tips for the selected part. Phones get a top view for placing parts, the board turned lengthwise and tap-to-place. The 3D engine (three.js via react-three-fiber) only downloads when the app is opened.
+It has eight example circuits, undo, Move (pick a part back up), keyboard shortcuts (V select, W wire, R resistor, L LED, B button, Z buzzer, P pot, C capacitor, M meter, X delete, Ctrl+Z undo), a top view, a retro pixel mode and an inspector showing current, voltage and tips for the selected part. Phones get a top view for placing parts, the board turned lengthwise and tap-to-place. The 3D engine (three.js via react-three-fiber) only downloads when the app is opened.
 
 Desktop details: snap windows by dragging them to the screen edges, double-click a title bar to maximize, rubber-band select icons, right-click the desktop, use <kbd>Ctrl</kbd>+<kbd>K</kbd> to search everything, and <kbd>Esc</kbd> to close a window. Window positions, the wallpaper and settings are remembered between visits. Returning visitors skip the boot screen (add `?boot` to replay it).
 

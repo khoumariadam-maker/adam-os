@@ -1,6 +1,6 @@
 // Part catalogue for Breadboard.exe: what each part is, its electrical model and its looks.
 
-export type PartKind = 'battery' | 'resistor' | 'led' | 'button' | 'buzzer' | 'wire';
+export type PartKind = 'battery' | 'resistor' | 'led' | 'button' | 'buzzer' | 'wire' | 'pot' | 'cap' | 'meter';
 export type LedColor = 'red' | 'yellow' | 'green' | 'blue' | 'white';
 export type WireColor = 'red' | 'black' | 'blue' | 'green' | 'yellow' | 'orange' | 'white';
 export type BatteryType = 'aa2' | 'aa3' | '9v';
@@ -10,9 +10,11 @@ export interface Part {
   kind: PartKind;
   // pins[0] is + / anode / first leg, pins[1] is − / cathode / second leg. Hole ids.
   pins: [string, string];
-  ohms?: number; // resistor
+  ohms?: number; // resistor; potentiometer full-scale value
+  pos?: number; // potentiometer knob, 0..1
+  uf?: number; // capacitor, microfarads
   color?: LedColor | WireColor; // led, wire
-  burnt?: boolean; // led
+  burnt?: boolean; // led, capacitor (vented)
   battery?: BatteryType;
   on?: boolean; // battery switch
 }
@@ -51,6 +53,14 @@ export const LED_FULL_BRIGHT = 0.02;
 export const LED_HOT = 0.03;
 export const LED_BURN = 0.045;
 export const SHORT_CIRCUIT_AMPS = 1.2;
+
+export const CAP_VALUES = [10, 100, 470, 1000, 2200, 4700];
+export const formatFarads = (uf: number) => (uf >= 1000 ? `${+(uf / 1000).toFixed(1)} mF` : `${uf} µF`);
+// Potentiometer resistance between its two legs for a knob position (never quite 0 Ω).
+export const potOhms = (p: Part) => Math.max(1, (p.pos ?? 0.5) * (p.ohms ?? 10000));
+export const POT_VALUES = [1000, 10000, 100000];
+// Electrolytic capacitors are polarised: reversed by more than this for a moment, they vent.
+export const CAP_REVERSE_LIMIT = 1.0;
 
 export const RESISTOR_VALUES = [10, 47, 100, 150, 220, 330, 470, 680, 1000, 2200, 4700, 10000, 47000, 100000];
 
@@ -93,6 +103,9 @@ export const MAX_SPAN: Record<PartKind, number> = {
   led: 3.2,
   button: 4.2,
   buzzer: 4.2,
+  pot: 4.2,
+  cap: 3.2,
+  meter: Infinity,
 };
 
 export const PART_LABEL: Record<PartKind, string> = {
@@ -102,6 +115,9 @@ export const PART_LABEL: Record<PartKind, string> = {
   button: 'Push button',
   buzzer: 'Buzzer',
   wire: 'Jumper wire',
+  pot: 'Potentiometer',
+  cap: 'Capacitor',
+  meter: 'Multimeter',
 };
 
 export const partTitle = (p: Part) => {
@@ -114,6 +130,12 @@ export const partTitle = (p: Part) => {
       return BATTERIES[p.battery ?? '9v'].label;
     case 'wire':
       return `${(p.color ?? 'red')[0].toUpperCase()}${(p.color ?? 'red').slice(1)} jumper wire`;
+    case 'pot':
+      return `Potentiometer ${formatOhms(p.ohms ?? 10000)}`;
+    case 'cap':
+      return `Capacitor ${formatFarads(p.uf ?? 1000)}${p.burnt ? ' (vented!)' : ''}`;
+    case 'meter':
+      return 'Multimeter (volts)';
     default:
       return PART_LABEL[p.kind];
   }

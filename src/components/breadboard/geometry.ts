@@ -168,7 +168,51 @@ export const partPath = (p: Part): THREE.Vector3[] => {
       return bodyShape(l, 0.45).path;
     case 'buzzer':
       return bodyShape(l, 0.55).path;
+    case 'pot':
+      return bodyShape(l, 0.5).path;
+    case 'cap':
+      return capShape(p, l).path;
     default:
       return [l.p0, l.p1];
   }
+};
+
+// ---- Electrolytic capacitor: a can standing between its legs ------------------------------------------
+export const capSize = (uf: number) => {
+  const k = Math.log10(Math.max(1, uf));
+  return { r: 0.42 + 0.09 * k, h: 1.0 + 0.32 * k };
+};
+export const capShape = (p: Part, l: Layout) => {
+  const { r, h } = capSize(p.uf ?? 1000);
+  const base = l.mid.clone().add(V(0, 0.35, 0));
+  const half = Math.min(0.22, l.span / 2);
+  const t0 = base.clone().addScaledVector(l.u, -half);
+  const t1 = base.clone().addScaledVector(l.u, half);
+  return {
+    base,
+    r,
+    h,
+    top: base.clone().add(V(0, h + 0.2, 0)),
+    legs: [
+      [l.p0, t0],
+      [l.p1, t1],
+    ] as [THREE.Vector3, THREE.Vector3][],
+    path: [l.p0, t0, base.clone().add(V(0, h / 2, 0)), t1, l.p1],
+  };
+};
+
+// ---- Multimeter on the desk, front right --------------------------------------------------------------------
+// At the back of the desk beside the battery: in view (and the leads short) in both orientations.
+export const METER = { c: V(-6.5, DESK_Y + 0.55, -14.6), size: V(4.4, 1.1, 5.8) };
+export const meterJacks = () => {
+  const y = METER.c.y + METER.size.y / 2 + 0.05;
+  const z = METER.c.z + METER.size.z / 2 - 0.7;
+  return { red: V(METER.c.x - 0.9, y, z), black: V(METER.c.x + 0.9, y, z) };
+};
+export const PROBE_H = 2.4;
+export const probeLead = (jack: THREE.Vector3, hole: string) => {
+  const tip = pinPos(hole);
+  const top = tip.clone().add(V(0, PROBE_H + 0.1, 0));
+  const mid = jack.clone().lerp(top, 0.5).add(V(0, 2.2, 0));
+  return new THREE.CatmullRomCurve3([top, top.clone().add(V(0, 0.8, 0)), mid, jack.clone().add(V(0, 0.8, 0)), jack], false, 'centripetal');
 };

@@ -153,3 +153,32 @@ export const batteryLabel = () => {
   g.fillText('+  ALKALINE  −', 256, 222);
   return finish(c, 4);
 };
+
+// Multimeter LCD: redrawn whenever the reading changes.
+export const drawLcd = (c: HTMLCanvasElement, text: string, unit: string) => {
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#a9bfa2';
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = 'rgba(0,0,0,0.08)';
+  g.fillRect(0, c.height - 10, c.width, 10);
+  g.fillStyle = '#18261a';
+  g.textBaseline = 'middle';
+  g.textAlign = 'right';
+  g.font = 'bold 92px ui-monospace, Menlo, monospace';
+  g.fillText(text, c.width - 70, c.height / 2 + 4);
+  g.font = 'bold 34px ui-monospace, Menlo, monospace';
+  g.fillText(unit, c.width - 12, c.height / 2 + 24);
+  g.textAlign = 'left';
+  g.font = 'bold 22px ui-monospace, Menlo, monospace';
+  g.fillText('DC', 12, 22);
+};
+export const lcdTexture = () => {
+  const c = document.createElement('canvas');
+  c.width = 384;
+  c.height = 144;
+  drawLcd(c, '0.00', 'V');
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return { canvas: c, texture: t };
+};
