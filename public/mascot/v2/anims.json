@@ -93,5 +93,65 @@
     "frames": 4,
     "fps": 8,
     "loop": true
+  },
+  "run": {
+    "frames": 8,
+    "fps": 14,
+    "loop": true
+  },
+  "climb": {
+    "frames": 4,
+    "fps": 8,
+    "loop": true
+  },
+  "sit": {
+    "frames": 4,
+    "fps": 3,
+    "loop": true
+  },
+  "stretch": {
+    "frames": 6,
+    "fps": 8,
+    "loop": false
+  },
+  "yawn": {
+    "frames": 5,
+    "fps": 6,
+    "loop": false
+  },
+  "scratch": {
+    "frames": 4,
+    "fps": 8,
+    "loop": true
+  },
+  "shoot-web": {
+    "frames": 6,
+    "fps": 14,
+    "loop": false
+  },
+  "thumbs-up": {
+    "frames": 4,
+    "fps": 10,
+    "loop": false
+  },
+  "laugh": {
+    "frames": 4,
+    "fps": 10,
+    "loop": true
+  },
+  "shrug": {
+    "frames": 4,
+    "fps": 10,
+    "loop": false
+  },
+  "kick": {
+    "frames": 5,
+    "fps": 14,
+    "loop": false
+  },
+  "sneeze": {
+    "frames": 6,
+    "fps": 12,
+    "loop": false
   }
 }

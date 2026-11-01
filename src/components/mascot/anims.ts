@@ -21,7 +21,19 @@ export type AnimName =
   | 'fall'
   | 'land'
   | 'celebrate'
-  | 'loading';
+  | 'loading'
+  | 'run'
+  | 'climb'
+  | 'sit'
+  | 'stretch'
+  | 'yawn'
+  | 'scratch'
+  | 'shoot-web'
+  | 'thumbs-up'
+  | 'laugh'
+  | 'shrug'
+  | 'kick'
+  | 'sneeze';
 
 export interface AnimMeta {
   frames: number;
@@ -32,6 +44,7 @@ export interface AnimMeta {
 export const ANIM_NAMES: AnimName[] = [
   'idle', 'blink', 'look-left', 'look-right', 'walk', 'hop', 'dance', 'wave', 'typing', 'sleep',
   'love', 'dizzy', 'surprised', 'annoyed', 'dangle', 'fall', 'land', 'celebrate', 'loading',
+  'run', 'climb', 'sit', 'stretch', 'yawn', 'scratch', 'shoot-web', 'thumbs-up', 'laugh', 'shrug', 'kick', 'sneeze',
 ];
 
 // Mirrors public/mascot/v2/anims.json; the component loads that file and falls back to this copy.
@@ -55,7 +68,22 @@ export const DEFAULT_ANIMS: Record<AnimName, AnimMeta> = {
   land: { frames: 3, fps: 14, loop: false },
   celebrate: { frames: 4, fps: 8, loop: true },
   loading: { frames: 4, fps: 8, loop: true },
+  run: { frames: 8, fps: 14, loop: true },
+  climb: { frames: 4, fps: 8, loop: true },
+  sit: { frames: 4, fps: 3, loop: true },
+  stretch: { frames: 6, fps: 8, loop: false },
+  yawn: { frames: 5, fps: 6, loop: false },
+  scratch: { frames: 4, fps: 8, loop: true },
+  'shoot-web': { frames: 6, fps: 14, loop: false },
+  'thumbs-up': { frames: 4, fps: 10, loop: false },
+  laugh: { frames: 4, fps: 10, loop: true },
+  shrug: { frames: 4, fps: 10, loop: false },
+  kick: { frames: 5, fps: 14, loop: false },
+  sneeze: { frames: 6, fps: 12, loop: false },
 };
+
+// Animations whose art faces right; the player mirrors them to face left.
+export const DIRECTIONAL_ANIMS: ReadonlySet<AnimName> = new Set<AnimName>(['walk', 'run', 'shoot-web', 'kick']);
 
 // Moods other parts of the OS can ask for through MascotContext (setFrame / react).
 // The first eight are the original names; the rest map 1:1 onto new animations.

@@ -98,6 +98,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
         run: () => updateSettings({ theme: settings.theme === 'classic' ? 'dark' : 'classic' }),
       },
       { id: 'spider-pet', label: 'Pet Pixel Spider', hint: 'mascot', glyph: 'star' as IconName, keywords: 'pet spider mascot love', run: () => sendCommand('pet') },
+      { id: 'spider-trick', label: 'Make Pixel Spider do a trick', hint: 'mascot', glyph: 'trophy' as IconName, keywords: 'spider mascot trick kick sneeze stretch', run: () => sendCommand('trick') },
+      { id: 'spider-web', label: 'Pixel Spider: shoot a web', hint: 'mascot', glyph: 'send' as IconName, keywords: 'spider mascot web shoot thwip', run: () => sendCommand('web') },
       { id: 'spider-dance', label: 'Make Pixel Spider dance', hint: 'mascot', glyph: 'jukebox' as IconName, keywords: 'dance spider mascot party music', run: () => sendCommand('dance') },
       {
         id: 'spider-toggle',
