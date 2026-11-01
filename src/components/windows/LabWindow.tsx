@@ -39,7 +39,7 @@ const STR = {
     threshold: 'Water below',
     serial: 'Serial monitor · 115200 baud',
     wiringNote:
-      'Capacitive soil probe on an ADC1 pin (GPIO34, input-only), DHT22 on GPIO4, pump relay on GPIO26. Many relay boards want 5V on VCC: use VIN if yours does.',
+      'Soil probe on ADC1 (GPIO34, input-only, so it keeps working with Wi-Fi on), DHT22 on GPIO4 with a 10 kΩ pull-up to 3V3, relay module on GPIO26 powered from VIN (5V). The pump never runs from the ESP32: the relay contacts switch it on its own supply, and all grounds are shared.',
     videoMissing: 'No build video yet.',
     videoHint: 'Drop a build video at public/lab/demo.mp4',
     videoCaption: 'Real build footage of the irrigation rig.',
@@ -66,7 +66,7 @@ const STR = {
     threshold: 'الري تحت',
     serial: 'المراقب التسلسلي · 115200 baud',
     wiringNote:
-      'حساس التربة السعوي على منفذ ADC1 ‏(GPIO34، إدخال فقط)، وDHT22 على GPIO4، ومرحّل المضخة على GPIO26. كثير من لوحات المرحّل تحتاج 5 فولت على VCC، فاستخدم VIN عند الحاجة.',
+      'حساس التربة على ADC1 ‏(GPIO34، إدخال فقط، فيبقى يعمل مع تشغيل Wi-Fi)، وDHT22 على GPIO4 مع مقاومة سحب 10 كيلو أوم إلى 3V3، ووحدة المرحّل على GPIO26 وتتغذى من VIN ‏(5 فولت). المضخة لا تعمل من ESP32 مباشرة: أطراف المرحّل تشغّلها من مصدرها الخاص، وكل الأرضيات مشتركة.',
     videoMissing: 'لا يوجد فيديو للمشروع بعد.',
     videoHint: 'ضع فيديو المشروع في public/lab/demo.mp4',
     videoCaption: 'لقطات حقيقية لبناء نظام الري.',
@@ -357,7 +357,8 @@ const Sparkline: React.FC<{
 const WiringDiagram: React.FC = () => {
   // Theme colours (CSS variables) so the diagram reads on both the dark and classic themes.
   const C = {
-    vcc: CV('red'),
+    v33: CV('red'),
+    v5: 'color-mix(in srgb, rgb(var(--c-red)) 45%, rgb(var(--c-yellow)))',
     gnd: CV('slate'),
     soil: CV('green'),
     dht: CV('yellow'),
@@ -370,85 +371,146 @@ const WiringDiagram: React.FC = () => {
     text: CV('text'),
     label: CV('lavender'),
   };
-  const espPins = [
-    { label: '3V3', y: 40, color: C.vcc },
-    { label: 'GND', y: 70, color: C.gnd },
-    { label: 'GPIO34', y: 110, color: C.soil },
-    { label: 'GPIO4', y: 140, color: C.dht },
-    { label: 'GPIO26', y: 180, color: C.relay },
+
+  // Layout (viewBox units). Every signal runs straight across at its pin's height; power comes
+  // down three rails. Rail x positions are ordered so the power feeds never cross each other.
+  const PIN_X = 108; // tip of the ESP32 pin stubs
+  const MOD_X = 250; // left edge of the modules (pin stubs end here)
+  const RAIL = { gnd: 132, v5: 148, v33: 164 };
+  const Y = { v33: 40, v5: 56, gnd: 72, gpio34: 118, gpio4: 180, gpio26: 240 };
+  const soil = { y: 86, h: 60, vcc: 98, out: 118, gnd: 134 };
+  const dht = { y: 146, h: 58, vcc: 156, data: 180, gnd: 194 };
+  const relay = { y: 210, h: 80, vcc: 220, inp: 240, gnd: 260, com: 234, no: 280 };
+  const RES_X = 222; // DHT22 pull-up resistor, between its VCC and DATA lines
+
+  // Vertical rail spans, used to draw a "hop" wherever a horizontal wire crosses a rail it isn't joined to.
+  const rails = [
+    { x: RAIL.gnd, y1: Y.gnd, y2: relay.gnd, net: 'gnd' },
+    { x: RAIL.v5, y1: Y.v5, y2: relay.vcc, net: 'v5' },
+    { x: RAIL.v33, y1: Y.v33, y2: dht.vcc, net: 'v33' },
   ];
-  const modules = [
-    { name: 'SOIL (cap.)', y: 20, h: 60, pins: [['VCC', 35], ['GND', 50], ['AOUT', 65]] as [string, number][] },
-    { name: 'DHT22', y: 90, h: 60, pins: [['VCC', 105], ['DATA', 120], ['GND', 135]] as [string, number][] },
-    { name: 'RELAY', y: 160, h: 56, pins: [['VCC', 172], ['GND', 187], ['IN', 202]] as [string, number][] },
-  ];
-  const vcc = 150;
-  const gnd = 170;
-  const wire = (stroke: string, strokeWidth = 3) => ({
+  const HOP = 4;
+  const hWire = (y: number, x1: number, x2: number, net: string) => {
+    const hops = rails.filter((r) => r.net !== net && r.x > x1 && r.x < x2 && y > r.y1 && y < r.y2).map((r) => r.x);
+    let d = `M${x1} ${y}`;
+    hops.forEach((hx) => {
+      d += ` H${hx - HOP} a${HOP} ${HOP} 0 0 1 ${HOP * 2} 0`;
+    });
+    return `${d} H${x2}`;
+  };
+  const wire = (stroke: string, strokeWidth = 2.5) => ({
     style: { fill: 'none', stroke },
     strokeWidth,
-    strokeLinecap: 'square' as const,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
   });
   const fill = (f: string, stroke?: string) => ({ style: stroke ? { fill: f, stroke } : { fill: f } });
-  const dot = (x: number, yy: number, c: string) => <rect x={x - 3} y={yy - 3} width={6} height={6} {...fill(c)} />;
+  const dot = (x: number, yy: number, c: string) => <circle cx={x} cy={yy} r={3.4} {...fill(c)} />;
+  const font = { fontFamily: 'var(--font-mono), monospace' };
+
+  const espPins: Array<[string, number, string]> = [
+    ['3V3', Y.v33, C.v33],
+    ['VIN 5V', Y.v5, C.v5],
+    ['GND', Y.gnd, C.gnd],
+    ['GPIO34', Y.gpio34, C.soil],
+    ['GPIO4', Y.gpio4, C.dht],
+    ['GPIO26', Y.gpio26, C.relay],
+  ];
+  const modules: Array<{ name: string; y: number; h: number; pins: Array<[string, number]> }> = [
+    { name: 'SOIL (cap.)', y: soil.y, h: soil.h, pins: [['VCC', soil.vcc], ['AOUT', soil.out], ['GND', soil.gnd]] },
+    { name: 'DHT22', y: dht.y, h: dht.h, pins: [['VCC', dht.vcc], ['DATA', dht.data], ['GND', dht.gnd]] },
+    { name: 'RELAY', y: relay.y, h: relay.h, pins: [['VCC', relay.vcc], ['IN', relay.inp], ['GND', relay.gnd]] },
+  ];
+
+  // Pump loop on the relay contacts: COM → supply (+) … supply (−) → pump → NO.
+  const PX = 432;
+  const pumpY = 264;
 
   return (
     <svg
-      viewBox="0 0 360 225"
-      className="w-full max-w-[560px] mx-auto h-auto"
-      shapeRendering="crispEdges"
+      viewBox="0 0 470 300"
+      preserveAspectRatio="xMidYMid meet"
+      className="w-full max-w-[640px] mx-auto h-auto max-h-[min(46vh,340px)] md:max-h-[min(50vh,360px)]"
       role="img"
-      aria-label="ESP32 wiring: GPIO34 to soil sensor AOUT, GPIO4 to DHT22 data, GPIO26 to relay IN, 3V3 and GND to all modules"
-      fontFamily='"PixelAE","Press Start 2P",monospace'
+      aria-label="ESP32 schematic. 3V3 powers the soil sensor and the DHT22; VIN 5V powers the relay; all grounds are shared. GPIO34 reads the soil sensor's analog output, GPIO4 reads the DHT22 data line with a 10 kilo-ohm pull-up to 3V3, and GPIO26 drives the relay input. The relay's COM and NO contacts switch the pump on its own 5 to 12 volt supply."
+      style={font}
     >
       {/* ESP32 board */}
-      <rect x={10} y={20} width={100} height={185} {...fill(C.board, C.edge)} strokeWidth={2} />
-      <rect x={30} y={30} width={50} height={26} {...fill(C.chip, C.accent)} strokeWidth={2} />
-      <text x={55} y={47} {...fill(C.label)} fontSize={7} textAnchor="middle">WROOM</text>
-      <text x={20} y={200} {...fill(C.text)} fontSize={8}>ESP32</text>
-      {espPins.map((p) => (
-        <g key={p.label}>
-          <rect x={104} y={p.y - 3} width={8} height={6} {...fill(C.pin)} />
-          <text x={100} y={p.y + 3} {...fill(p.color)} fontSize={7} textAnchor="end">{p.label}</text>
+      <rect x={10} y={20} width={90} height={270} rx={3} {...fill(C.board, C.edge)} strokeWidth={2} />
+      <rect x={22} y={248} width={50} height={28} rx={2} {...fill(C.chip, C.accent)} strokeWidth={2} />
+      <text x={47} y={265} {...fill(C.label)} fontSize={7} textAnchor="middle">WROOM-32</text>
+      <text x={18} y={36} {...fill(C.text)} fontSize={9} fontWeight={700}>ESP32</text>
+      {espPins.map(([label, y, color]) => (
+        <g key={label}>
+          <rect x={96} y={y - 3} width={PIN_X - 96} height={6} {...fill(C.pin)} />
+          <text x={92} y={y + 3} {...fill(color)} fontSize={7.5} textAnchor="end">{label}</text>
         </g>
       ))}
 
-      {/* Power buses */}
-      <path d={`M112 40 H${vcc} M${vcc} 35 V172`} {...wire(C.vcc)} />
-      <path d={`M112 70 H${gnd} M${gnd} 50 V187`} {...wire(C.gnd)} />
-      {dot(vcc, 40, C.vcc)}
-      {dot(gnd, 70, C.gnd)}
-      {[35, 105, 172].map((yy) => (
-        <g key={`v${yy}`}>
-          <path d={`M${vcc} ${yy} H230`} {...wire(C.vcc, 2)} />
-          {dot(vcc, yy, C.vcc)}
-        </g>
-      ))}
-      {[50, 135, 187].map((yy) => (
-        <g key={`g${yy}`}>
-          <path d={`M${gnd} ${yy} H230`} {...wire(C.gnd, 2)} />
-          {dot(gnd, yy, C.gnd)}
-        </g>
-      ))}
+      {/* Power rails (feed from the pin, then down) */}
+      <path d={`M${PIN_X} ${Y.v33} H${RAIL.v33} V${dht.vcc}`} {...wire(C.v33)} />
+      <path d={`M${PIN_X} ${Y.v5} H${RAIL.v5} V${relay.vcc}`} {...wire(C.v5)} />
+      <path d={`M${PIN_X} ${Y.gnd} H${RAIL.gnd} V${relay.gnd}`} {...wire(C.gnd)} />
 
-      {/* Signal lines */}
-      <path d="M112 110 H190 V65 H230" {...wire(C.soil)} />
-      <path d="M112 140 H200 V120 H230" {...wire(C.dht)} />
-      <path d="M112 180 H210 V202 H230" {...wire(C.relay)} />
+      {/* Power branches to the modules */}
+      <path d={hWire(soil.vcc, RAIL.v33, MOD_X, 'v33')} {...wire(C.v33)} />
+      <path d={hWire(dht.vcc, RAIL.v33, MOD_X, 'v33')} {...wire(C.v33)} />
+      <path d={hWire(relay.vcc, RAIL.v5, MOD_X, 'v5')} {...wire(C.v5)} />
+      {[soil.gnd, dht.gnd, relay.gnd].map((y) => (
+        <path key={`g${y}`} d={hWire(y, RAIL.gnd, MOD_X, 'gnd')} {...wire(C.gnd)} />
+      ))}
+      {/* Junctions: only where wires really connect */}
+      {dot(RAIL.v33, soil.vcc, C.v33)}
+      {dot(RAIL.gnd, soil.gnd, C.gnd)}
+      {dot(RAIL.gnd, dht.gnd, C.gnd)}
+
+      {/* Signals: straight across at the pin height */}
+      <path d={hWire(Y.gpio34, PIN_X, MOD_X, 'sig')} {...wire(C.soil)} />
+      <path d={hWire(Y.gpio4, PIN_X, MOD_X, 'sig')} {...wire(C.dht)} />
+      <path d={hWire(Y.gpio26, PIN_X, MOD_X, 'sig')} {...wire(C.relay)} />
+
+      {/* DHT22 pull-up: 10 kΩ from DATA to 3V3 */}
+      <path
+        d={`M${RES_X} ${dht.vcc} V${dht.vcc + 4} l5 2 l-10 3 l10 3 l-10 3 l10 3 l-5 2 V${Y.gpio4}`}
+        {...wire(C.text, 1.6)}
+      />
+      {dot(RES_X, dht.vcc, C.v33)}
+      {dot(RES_X, Y.gpio4, C.dht)}
+      <text x={RES_X - 9} y={dht.vcc + 15} {...fill(C.label)} fontSize={6.5} textAnchor="end">10kΩ</text>
 
       {/* Modules */}
       {modules.map((m) => (
         <g key={m.name}>
-          <rect x={232} y={m.y} width={118} height={m.h} {...fill(C.board, C.edge)} strokeWidth={2} />
-          <text x={340} y={m.y + 14} {...fill(C.text)} fontSize={7} textAnchor="end">{m.name}</text>
+          <rect x={MOD_X + 2} y={m.y} width={110} height={m.h} rx={3} {...fill(C.board, C.edge)} strokeWidth={2} />
+          <text x={MOD_X + 104} y={m.y + 13} {...fill(C.text)} fontSize={7.5} fontWeight={700} textAnchor="end">{m.name}</text>
           {m.pins.map(([label, py]) => (
             <g key={label}>
-              <rect x={228} y={py - 3} width={8} height={6} {...fill(C.pin)} />
-              <text x={242} y={py + 3} {...fill(C.label)} fontSize={7}>{label}</text>
+              <rect x={MOD_X - 4} y={py - 3} width={8} height={6} {...fill(C.pin)} />
+              <text x={MOD_X + 10} y={py + 3} {...fill(C.label)} fontSize={7}>{label}</text>
             </g>
           ))}
         </g>
       ))}
+
+      {/* Relay contacts → pump on its own supply */}
+      {[
+        ['COM', relay.com],
+        ['NO', relay.no],
+      ].map(([label, py]) => (
+        <g key={label as string}>
+          <rect x={MOD_X + 108} y={(py as number) - 3} width={8} height={6} {...fill(C.pin)} />
+          <text x={MOD_X + 104} y={(py as number) + 3} {...fill(C.label)} fontSize={7} textAnchor="end">{label}</text>
+        </g>
+      ))}
+      <path d={`M${MOD_X + 116} ${relay.com} H${PX} V${relay.com + 8}`} {...wire(C.v5)} />
+      {/* Supply: long plate (+) over short plate (−) */}
+      <path d={`M${PX - 9} ${relay.com + 8} H${PX + 9} M${PX - 5} ${relay.com + 13} H${PX + 5}`} {...wire(C.text, 2)} />
+      <text x={PX + 12} y={relay.com + 13} {...fill(C.label)} fontSize={6.5}>5–12V</text>
+      <path d={`M${PX} ${relay.com + 13} V${pumpY - 9}`} {...wire(C.gnd)} />
+      <circle cx={PX} cy={pumpY} r={9} {...fill(C.board, C.text)} strokeWidth={1.6} />
+      <text x={PX} y={pumpY + 3} {...fill(C.text)} fontSize={8} fontWeight={700} textAnchor="middle">M</text>
+      <text x={PX + 13} y={pumpY + 3} {...fill(C.label)} fontSize={6.5}>PUMP</text>
+      <path d={`M${PX} ${pumpY + 9} V${relay.no + 10} H${MOD_X + 124} V${relay.no} H${MOD_X + 116}`} {...wire(C.v5)} />
     </svg>
   );
 };
