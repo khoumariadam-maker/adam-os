@@ -20,7 +20,8 @@ A Windows 98-style desktop you can actually use: draggable windows, a Start menu
 | Contact.exe | Email, copy address, GitHub, and a message form that opens your own mail app |
 | Terminal.exe | `help`, `neofetch`, `ls`/`cd`/`cat`, `open <app>`, `sudo hire-adam`, tab completion and history |
 | GitHub.exe | Live public GitHub activity: repos, recent pushes and a 7-week heatmap (no backend) |
-| Explorer, Paint, Jukebox, Settings | Classic accessories. Settings has the theme, wallpapers, living wallpaper, CRT bloom, screensaver and cursor |
+| Paint.exe | Pixel-art editor: drag to draw (finger, pen or mouse), pencil, eraser, fill, eyedropper, line, mirror, undo/redo, 16 or 32 px canvas, autosave, PNG export |
+| Explorer, Jukebox, Settings | Classic accessories. Settings has the theme, wallpapers, living wallpaper, CRT bloom, screensaver and cursor |
 | SpiderSnake, Minesweeper | Games, with best scores saved locally |
 
 Desktop details: snap windows by dragging them to the screen edges, double-click a title bar to maximize, rubber-band select icons, right-click the desktop, use <kbd>Ctrl</kbd>+<kbd>K</kbd> to search everything, and <kbd>Esc</kbd> to close a window. Window positions, the wallpaper and settings are remembered between visits. Returning visitors skip the boot screen (add `?boot` to replay it).
@@ -30,11 +31,12 @@ Phones get a home screen with every app, full-screen app sheets and a bottom tab
 **Look and feel**
 - Two themes: *Spider Night* (dark cobalt) and *Windows 98* (silver, navy and teal). Switch in Settings or with <kbd>Ctrl</kbd>+<kbd>K</kbd> → "theme".
 - One hand-made pixel icon set (`src/lib/pixel-icons.ts`) used for the app icons and every UI glyph. Icons follow the theme colours.
-- **Pixel Spider**, the mascot, has 19 animations (walk, hop, dance, wave, typing, sleep, love, dizzy, annoyed, surprised, dangle, fall, land…) and a small physics engine:
+- **Pixel Spider**, the mascot, has 31 animations (walk, run, climb, hop, dance, wave, sit, stretch, yawn, scratch, sneeze, kick, shrug, thumbs-up, laugh, shoot-web, typing, sleep, love, dizzy, annoyed, surprised, dangle, fall, land…) and a small physics engine. He always has something to do: every few seconds he walks or runs along the taskbar, jumps onto windows with an aimed physics arc, climbs up and rappels down on his thread, patrols and sits on title bars, chases your cursor and shoots webs at it, or does a little trick.
   - drag him around on his web and throw him: he falls with gravity, bounces, and lands on the floor or on a window's title bar, then rides along when you move that window (and falls off if you close it)
   - wiggle the cursor over him to pet him; click him too often and he gets annoyed, then dizzy
   - he follows the cursor with his eyes, walks along the taskbar, web-swings onto the window you're using, naps when you go idle and wakes up when you come back
-  - right-click him for a menu (pet, dance, jump, wave, web-swing, nap, go home, hide); the terminal has `pet`, `dance`, `nap` and `jump`; the Jukebox makes him dance; the Konami code starts a dance break
+  - yank a window he's standing on and he loses his balance; throw him hard and he lands dizzy; hover over him for a reaction, park your cursor near him and he waves
+  - right-click him for a menu (pet, dance, jump, wave, web-swing, shoot web, trick, thumbs up, sit, nap, go home, hide); the terminal has `pet`, `dance`, `nap`, `jump`, `trick`, `web` and `sit`; the Jukebox makes him dance; the Konami code starts a dance break
   - he's drawn at exactly half the 256px art size (pixel-perfect on high-DPI screens); hide him in Settings or with Ctrl+K
 - Windows grow out of their icon when opened and shrink into the taskbar when minimized.
 - A BIOS screen, then an "Adam OS 98" splash on first visit.

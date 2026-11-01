@@ -5,7 +5,7 @@ import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, use
 import type { AnimationPlaybackControls } from 'framer-motion';
 import { SpeechBubble } from './SpeechBubble';
 import { SpiderSprite, spriteKeyframes } from './mascot/SpiderSprite';
-import { ANIM_NAMES, DEFAULT_ANIMS, isAnimMeta, MOOD_TO_ANIM, SPRITE_GEOMETRY, type AnimMeta, type AnimName } from './mascot/anims';
+import { ANIM_NAMES, DEFAULT_ANIMS, DIRECTIONAL_ANIMS, isAnimMeta, MOOD_TO_ANIM, SPRITE_GEOMETRY, type AnimMeta, type AnimName } from './mascot/anims';
 import { useMascot } from '@/context/MascotContext';
 import { useSound } from '@/context/SoundContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -19,9 +19,11 @@ export type { SpiderFrame } from './mascot/anims';
 // ------------------------------------------------------------------ tuning
 const GRAVITY = 2600; // px/s²
 const MAX_THROW = 1900; // px/s
-const WALK_SPEED = 75; // px/s
+const WALK_SPEED = 80; // px/s
+const RUN_SPEED = 230; // px/s
+const CLIMB_SPEED = 120; // px/s
 const DRAG_THREAD = 34; // px of web between the cursor and the spider's head while carried
-const SLEEP_AFTER_MS = 45_000;
+const SLEEP_AFTER_MS = 90_000; // 45s late at night (he gets sleepy)
 const TITLEBAR_BUTTONS_PX = 100; // keep clear of _ □ ✕ when perching
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -111,6 +113,9 @@ export const PixelSpider: React.FC = () => {
   const [look, setLook] = useState<'left' | 'right' | null>(null);
   const [blink, setBlink] = useState(false);
   const [flip, setFlip] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [travelAnim, setTravelAnim] = useState<AnimName>('dangle');
+  const [webShot, setWebShot] = useState<{ id: number; x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [playId, setPlayId] = useState(0);
   const [puffId, setPuffId] = useState(0);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -128,12 +133,17 @@ export const PixelSpider: React.FC = () => {
     timers: [] as ReturnType<typeof setTimeout>[],
     moodTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     lastInput: Date.now(),
-    nextActionAt: Date.now() + rand(14_000, 22_000),
+    nextActionAt: Date.now() + rand(2_500, 4_000),
     clicks: [] as number[],
     pet: { dir: 0, x: 0, changes: [] as number[], cooldownUntil: 0 },
     konami: [] as string[],
     drag: null as null | { id: number; startX: number; startY: number; active: boolean; samples: Array<{ x: number; y: number; t: number }> },
     sleeping: false,
+    pointer: null as null | { x: number; y: number; t: number },
+    hoverCooldownUntil: 0,
+    waveCooldownUntil: 0,
+    rideFrom: null as null | { x: number; y: number },
+    petToggle: false,
   });
   const windowsRef = useRef(windows);
   windowsRef.current = windows;
@@ -186,8 +196,11 @@ export const PixelSpider: React.FC = () => {
     (s: Surface) => {
       const e = E.current;
       e.surface = s;
+      e.rideFrom = null;
       setMode('stand');
+      setRunning(false);
       rotTarget.set(0);
+      e.nextActionAt = Math.max(e.nextActionAt, Date.now() + rand(2_200, 5_000));
     },
     [setMode, rotTarget]
   );
@@ -228,6 +241,7 @@ export const PixelSpider: React.FC = () => {
   const land = useCallback(
     (s: Surface) => {
       const e = E.current;
+      const impact = Math.hypot(e.vx, e.vy);
       stopMotion();
       e.surface = s;
       e.vx = 0;
@@ -238,11 +252,16 @@ export const PixelSpider: React.FC = () => {
       setPuffId((n) => n + 1);
       playThud();
       later(() => {
-        if (E.current.mode === 'land') stand(s);
+        if (E.current.mode !== 'land') return;
+        stand(s);
+        if (impact > 1500) {
+          setMood('dizzy', 1800);
+          if (Math.random() < 0.5) mascotRef.current.setSpeechText('Ow. Stars everywhere.');
+        }
       }, 260);
-      e.nextActionAt = Date.now() + rand(8_000, 14_000);
+      e.nextActionAt = Date.now() + rand(2_500, 5_000);
     },
-    [later, playThud, rotTarget, setMode, stand, stopMotion]
+    [later, playThud, rotTarget, setMode, setMood, stand, stopMotion]
   );
 
   const startFall = useCallback(
@@ -261,10 +280,11 @@ export const PixelSpider: React.FC = () => {
         const g = geo.current;
         const { vw, floorY } = metrics();
         const prevFeet = my.get() + g.feet;
+        // Exact under constant gravity (velocity Verlet), so aimed jumps land where they were aimed.
+        let x = mx.get() + e.vx * dt;
+        let y = my.get() + e.vy * dt + 0.5 * GRAVITY * dt * dt;
         e.vy += GRAVITY * dt;
         e.vx *= 1 - 0.6 * dt; // air drag
-        let x = mx.get() + e.vx * dt;
-        let y = my.get() + e.vy * dt;
         if (x < 0 || x > vw - g.size) {
           x = clamp(x, 0, vw - g.size);
           e.vx = -e.vx * 0.5;
@@ -333,24 +353,48 @@ export const PixelSpider: React.FC = () => {
     [anims.hop, my, playBoing, reduceMotion, setMode, stand]
   );
 
+  // Walk (or run) along whatever he's standing on: the taskbar or a window's title bar.
   const walkTo = useCallback(
-    (targetX: number, then?: () => void) => {
+    (targetX: number, opts: { run?: boolean; then?: () => void } = {}) => {
       const e = E.current;
-      if (reduceMotion || e.surface.kind !== 'floor') return;
+      if (reduceMotion || (e.mode !== 'stand' && e.mode !== 'walk')) return;
+      const g = geo.current;
+      const s0 = e.surface;
+      let lo = 0;
+      let hi = metrics().vw - g.size;
+      if (s0.kind === 'window') {
+        const w = windowsRef.current[s0.id];
+        if (!w) return;
+        lo = w.position.x - g.size * 0.25;
+        hi = w.position.x + w.size.width - TITLEBAR_BUTTONS_PX - g.size * 0.75;
+        if (hi <= lo) return;
+      }
+      const x1 = clamp(targetX, lo, hi);
       stopMotion();
       const x0 = mx.get();
-      const dist = Math.abs(targetX - x0);
-      if (dist < 4) return;
-      setFlip(targetX < x0);
+      const dist = Math.abs(x1 - x0);
+      if (dist < 4) {
+        opts.then?.();
+        return;
+      }
+      const run = !!opts.run;
+      setFlip(x1 < x0);
+      setRunning(run);
       setMode('walk');
       e.atHome = false;
-      const c = animate(mx, targetX, { duration: dist / WALK_SPEED, ease: 'linear' });
+      const c = animate(mx, x1, { duration: dist / (run ? RUN_SPEED : WALK_SPEED), ease: dist > 140 ? 'easeInOut' : 'linear' });
       e.controls = [c];
       c.then(() => {
-        if (E.current.mode !== 'walk') return;
-        E.current.atHome = Math.abs(targetX - metrics().homeX) < 2;
-        stand({ kind: 'floor' });
-        then?.();
+        const cur = E.current;
+        if (cur.mode !== 'walk') return;
+        if (cur.surface.kind === 'window') {
+          const w = windowsRef.current[cur.surface.id];
+          if (w) cur.surface = { ...cur.surface, offsetX: mx.get() - w.position.x };
+        } else {
+          cur.atHome = Math.abs(x1 - metrics().homeX) < 2;
+        }
+        stand(cur.surface);
+        opts.then?.();
       });
     },
     [metrics, mx, reduceMotion, setMode, stand, stopMotion]
@@ -358,19 +402,20 @@ export const PixelSpider: React.FC = () => {
 
   // Swing on a web line (from the top of the screen) to a point, then land there.
   const travelTo = useCallback(
-    (x1: number, y1: number, surface: Surface, opts: { arc?: number; duration?: number } = {}) => {
+    (x1: number, y1: number, surface: Surface, opts: { arc?: number; duration?: number; anim?: AnimName; straight?: boolean } = {}) => {
       const e = E.current;
       if (reduceMotion) return;
       stopMotion();
       e.atHome = false;
       const x0 = mx.get();
       const y0 = my.get();
-      const peak = Math.max(-geo.current.head + 12, Math.min(y0, y1) - (opts.arc ?? 140));
+      const peak = opts.straight ? (y0 + y1) / 2 : Math.max(-geo.current.head + 12, Math.min(y0, y1) - (opts.arc ?? 140));
+      setTravelAnim(opts.anim ?? 'dangle');
       setMode('travel');
-      playSwing();
+      if (!opts.straight) playSwing();
       const duration = opts.duration ?? clamp(Math.hypot(x1 - x0, y1 - y0) / 700, 0.9, 1.6);
-      const t = { duration, times: [0, 0.5, 1], ease: 'easeInOut' as const };
-      rotTarget.set(clamp((x1 - x0) * -0.03, -20, 20));
+      const t = { duration, times: [0, 0.5, 1], ease: opts.straight ? ('linear' as const) : ('easeInOut' as const) };
+      rotTarget.set(opts.straight ? 0 : clamp((x1 - x0) * -0.03, -20, 20));
       const cx1 = animate(mx, [x0, (x0 + x1) / 2, x1], t);
       const cy1 = animate(my, [y0, peak, y1], t);
       e.controls = [cx1, cy1];
@@ -378,10 +423,48 @@ export const PixelSpider: React.FC = () => {
         if (E.current.mode !== 'travel') return;
         mx.set(x1);
         my.set(y1);
-        land(surface);
+        if (opts.straight) stand(surface);
+        else land(surface);
       });
     },
-    [land, mx, my, playSwing, reduceMotion, rotTarget, setMode, stopMotion]
+    [land, mx, my, playSwing, reduceMotion, rotTarget, setMode, stand, stopMotion]
+  );
+
+  // Jump with a real physics arc toward (x1, y1): crouch, then launch into the fall integrator,
+  // which lands on title bars and the taskbar by itself.
+  const jumpTo = useCallback(
+    (x1: number, y1: number) => {
+      const e = E.current;
+      if (reduceMotion || e.mode !== 'stand') return false;
+      const g = geo.current;
+      const x0 = mx.get();
+      const y0 = my.get();
+      let apexY = Math.max(-g.head + 10, Math.min(y0, y1) - rand(45, 80));
+      // Respect the integrator's speed limit, then aim with the apex that limit really gives.
+      const vy = -Math.min(MAX_THROW, Math.sqrt(2 * GRAVITY * (y0 - apexY)));
+      apexY = y0 - (vy * vy) / (2 * GRAVITY);
+      if (apexY > y1 - 24) return false; // too high to reach in one jump: the brain climbs instead
+      const T = -vy / GRAVITY + Math.sqrt((2 * (y1 - apexY)) / GRAVITY);
+      const vx = ((x1 - x0) * 0.6) / (1 - Math.exp(-0.6 * T)); // undo the air drag in the integrator
+      setFlip(x1 < x0);
+      setMode('hop');
+      setPlayId((n) => n + 1);
+      playBoing();
+      later(() => {
+        if (E.current.mode === 'hop') startFall(vx, vy);
+      }, 130);
+      return true;
+    },
+    [later, mx, my, playBoing, reduceMotion, setMode, startFall]
+  );
+
+  // Climb straight up a thread onto a title bar, or rappel down to the taskbar.
+  const climbTo = useCallback(
+    (y1: number, surface: Surface) => {
+      const dist = Math.abs(my.get() - y1);
+      travelTo(mx.get(), y1, surface, { straight: true, anim: y1 < my.get() ? 'climb' : 'dangle', duration: Math.max(0.5, dist / CLIMB_SPEED) });
+    },
+    [mx, my, travelTo]
   );
 
   const goHome = useCallback(() => {
@@ -409,7 +492,8 @@ export const PixelSpider: React.FC = () => {
     e.pet.cooldownUntil = Date.now() + 4000;
     setSleeping(false);
     e.sleeping = false;
-    setMood('love', 3200);
+    e.petToggle = !e.petToggle;
+    setMood(e.petToggle ? 'love' : 'laugh', 3200);
     playPop();
     say(pick(PET_LINES));
   }, [playPop, say, setMood]);
@@ -498,11 +582,27 @@ export const PixelSpider: React.FC = () => {
   // Window riding: stand on a title bar and move with it; fall if it goes away.
   useEffect(() => {
     const e = E.current;
-    if (e.surface.kind !== 'window' || (e.mode !== 'stand' && e.mode !== 'land')) return;
+    if (e.surface.kind !== 'window' || (e.mode !== 'stand' && e.mode !== 'land' && e.mode !== 'walk')) return;
     const w = windows[e.surface.id];
     if (!w || !w.isOpen || w.isMinimized || w.isMaximized) {
       setMood('surprised', 700);
       startFall(0, -200);
+      return;
+    }
+    const prev = e.rideFrom;
+    e.rideFrom = { x: w.position.x, y: w.position.y };
+    if (prev && Math.hypot(w.position.x - prev.x, w.position.y - prev.y) > 48) {
+      // Window yanked hard: he loses his balance and tumbles off.
+      mascotRef.current.setSpeechText(pick(['Whoa! Easy!', 'Not so fast!', 'AAAH!']));
+      startFall((w.position.x - prev.x) * 9, Math.min(-250, (w.position.y - prev.y) * 9));
+      return;
+    }
+    if (e.mode === 'walk') {
+      // Keep walking relative to the moving window.
+      if (prev) {
+        mx.set(mx.get() + (w.position.x - prev.x));
+        my.set(w.position.y - geo.current.feet);
+      }
       return;
     }
     mx.set(w.position.x + e.surface.offsetX);
@@ -514,6 +614,7 @@ export const PixelSpider: React.FC = () => {
     const onMove = (ev: PointerEvent) => {
       const e = E.current;
       e.lastInput = Date.now();
+      if (ev.pointerType !== 'touch') e.pointer = { x: ev.clientX, y: ev.clientY, t: Date.now() };
       if (e.sleeping) wake();
       if (e.mode !== 'stand' || ev.pointerType === 'touch') return;
       const g = geo.current;
@@ -587,7 +688,55 @@ export const PixelSpider: React.FC = () => {
     return () => clearInterval(id);
   }, [reduceMotion]);
 
-  // The "brain": every few seconds decide whether to wander, perch, nap or head home.
+  const animMs = useCallback((a: AnimName) => (anims[a].frames / anims[a].fps) * 1000 + 250, [anims]);
+
+  // Shoot a web line at a point (usually the cursor): plays the shoot-web animation facing it.
+  const shootWebAt = useCallback(
+    (tx: number, ty: number) => {
+      const g = geo.current;
+      const sx = mx.get();
+      const sy = my.get();
+      const left = tx < sx + g.cx;
+      setFlip(left);
+      setMood('shoot-web', animMs('shoot-web'));
+      playSwing();
+      const hx = sx + (left ? g.size * 0.18 : g.size * 0.82);
+      const hy = sy + g.size * 0.52;
+      later(() => setWebShot({ id: Date.now(), x1: hx, y1: hy, x2: tx, y2: ty }), 140);
+      later(() => setWebShot(null), 1100);
+    },
+    [animMs, later, mx, my, playSwing, setMood]
+  );
+
+  const fidget = useCallback(() => {
+    const night = new Date().getHours() < 6;
+    const options: AnimName[] = night
+      ? ['yawn', 'yawn', 'stretch', 'scratch', 'sit']
+      : ['stretch', 'yawn', 'scratch', 'sneeze', 'kick', 'thumbs-up', 'laugh', 'look-left', 'look-right', 'wave', 'shrug'];
+    const a = pick(options);
+    if (DIRECTIONAL_ANIMS.has(a)) setFlip(Math.random() < 0.5);
+    const ms = a === 'scratch' || a === 'laugh' ? 2200 : a === 'look-left' || a === 'look-right' ? 1100 : a === 'wave' ? 2000 : a === 'sit' ? rand(5000, 8000) : animMs(a);
+    setMood(a, ms);
+  }, [animMs, setMood]);
+
+  // Windows he could jump or climb onto from where he is.
+  const reachableWindows = useCallback(() => {
+    const g = geo.current;
+    const sx = mx.get() + g.cx;
+    const feetY = my.get() + g.feet;
+    const cur = E.current.surface;
+    return Object.values(windowsRef.current).filter((w) => {
+      if (!w.isOpen || w.isMinimized || w.isMaximized) return false;
+      if (cur.kind === 'window' && cur.id === w.id) return false;
+      const usable = w.size.width - TITLEBAR_BUTTONS_PX - g.size * 0.5;
+      if (usable < 40 || w.position.y - g.feet + g.head < 8) return false;
+      const dy = feetY - w.position.y;
+      const nearestX = clamp(sx, w.position.x + 20, w.position.x + usable);
+      return dy > -260 && dy < 780 && Math.abs(nearestX - sx) < 640;
+    });
+  }, [mx, my]);
+
+  // The "brain": every second or so pick the next activity, so he's always up to something.
   useEffect(() => {
     if (reduceMotion) return;
     const id = setInterval(() => {
@@ -595,43 +744,105 @@ export const PixelSpider: React.FC = () => {
       const m = mascotRef.current;
       if (document.hidden || e.mode !== 'stand' || moodRef.current || m.frame !== 'idle' || m.isSwinging || e.drag) return;
       const now = Date.now();
-      if (!e.sleeping && now - e.lastInput > SLEEP_AFTER_MS) {
+      const sleepAfter = new Date().getHours() < 6 ? 45_000 : SLEEP_AFTER_MS;
+      if (!e.sleeping && now - e.lastInput > sleepAfter) {
         e.sleeping = true;
         setSleeping(true);
         return;
       }
-      if (e.sleeping || now < e.nextActionAt) return;
-      e.nextActionAt = now + rand(18_000, 34_000);
-      const { vw, homeX } = metrics();
+      if (e.sleeping) return;
+
+      // Cursor parked near him for a while → he waves at you.
+      const p = e.pointer;
       const g = geo.current;
-      if (e.surface.kind === 'window') {
-        if (Math.random() < 0.35) {
-          setMood('surprised', 500);
-          startFall(rand(-260, 260), -420); // hop off the window
-        } else goHome();
-        return;
-      }
-      if (!e.atHome && Math.random() < 0.6) {
-        walkTo(homeX);
-        return;
-      }
-      const r = Math.random();
-      const active = activeRef.current ? windowsRef.current[activeRef.current] : null;
-      if (r < 0.35 && !g.isMobile && active && active.isOpen && !active.isMinimized && !active.isMaximized) {
-        const t = perchTarget(active);
-        if (t) {
-          travelTo(t.x, t.y, t.surface);
+      if (p && now - p.t > 2500 && now > e.waveCooldownUntil) {
+        const d = Math.hypot(p.x - (mx.get() + g.cx), p.y - (my.get() + g.size / 2));
+        if (d < 240) {
+          e.waveCooldownUntil = now + 25_000;
+          setMood('wave', 2200);
           return;
         }
       }
-      if (r < 0.75) {
-        walkTo(clamp(rand(60, vw - g.size - 60), 0, vw - g.size));
+      if (now < e.nextActionAt) return;
+      e.nextActionAt = now + rand(2_000, 4_500);
+
+      const { vw, floorY, homeX } = metrics();
+      const sx = mx.get();
+      const r = Math.random();
+      const targets = g.isMobile ? [] : reachableWindows();
+
+      if (e.surface.kind === 'window') {
+        const w = windowsRef.current[e.surface.id];
+        if (!w) return;
+        if (r < 0.3) walkTo(rand(w.position.x, w.position.x + w.size.width), { run: Math.random() < 0.2 });
+        else if (r < 0.48) setMood('sit', rand(4000, 7000));
+        else if (r < 0.6 && targets.length) {
+          const t = pick(targets);
+          jumpTo(clamp(rand(t.position.x + 10, t.position.x + t.size.width - TITLEBAR_BUTTONS_PX - g.size), 0, vw - g.size), t.position.y - g.feet);
+        } else if (r < 0.74) climbTo(floorY, { kind: 'floor' }); // rappel down on a thread
+        else if (r < 0.84) {
+          setMood('surprised', 400);
+          later(() => startFall(rand(-320, 320), -480), 300); // jump off
+        } else fidget();
         return;
       }
-      setMood(pick<AnimName>(['wave', 'look-left', 'look-right', 'dance']), 2400);
-    }, 3000);
+
+      // On the taskbar
+      if (r < 0.24) {
+        const far = Math.random() < 0.35;
+        const tx = clamp(far ? rand(40, vw - g.size - 40) : sx + rand(-260, 260), 0, vw - g.size);
+        walkTo(tx, { run: Math.abs(tx - sx) > 380 && Math.random() < 0.6 });
+      } else if (r < 0.4) fidget();
+      else if (r < 0.5) fidget(); // (sitting is saved for window ledges, where his legs can dangle)
+      else if (r < 0.66 && targets.length) {
+        const t = pick(targets);
+        const tx = clamp(rand(t.position.x + 10, t.position.x + t.size.width - TITLEBAR_BUTTONS_PX - g.size), 0, vw - g.size);
+        if (Math.random() < 0.5 && floorY - t.position.y > 140) {
+          // Walk under it, then climb a thread up onto it.
+          walkTo(tx, { then: () => climbTo(t.position.y - g.feet, { kind: 'window', id: t.id, offsetX: tx - t.position.x }) });
+        } else if (!jumpTo(tx, t.position.y - g.feet)) {
+          walkTo(tx, { then: () => climbTo(t.position.y - g.feet, { kind: 'window', id: t.id, offsetX: tx - t.position.x }) });
+        }
+      } else if (r < 0.72 && p && now - p.t < 4000 && Math.abs(p.x - sx) < 700) {
+        // Chase the cursor along the taskbar, then shoot a web at it.
+        walkTo(clamp(p.x - g.cx + (p.x > sx ? -60 : 60), 0, vw - g.size), {
+          run: true,
+          then: () => {
+            const q = E.current.pointer;
+            if (q) shootWebAt(q.x, q.y);
+          },
+        });
+      } else if (r < 0.8 && p) shootWebAt(p.x, p.y);
+      else if (r < 0.88) {
+        const x1 = clamp(rand(40, vw - g.size - 40), 0, vw - g.size);
+        travelTo(x1, floorY, { kind: 'floor' }, { arc: rand(160, 260) });
+      } else if (!e.atHome && r < 0.95) walkTo(homeX);
+      else setMood(pick<AnimName>(['dance', 'laugh', 'kick']), 2400);
+    }, 1000);
     return () => clearInterval(id);
-  }, [goHome, metrics, perchTarget, reduceMotion, setMood, startFall, travelTo, walkTo]);
+  }, [climbTo, fidget, jumpTo, later, metrics, mx, my, reachableWindows, reduceMotion, setMood, shootWebAt, startFall, travelTo, walkTo]);
+
+  // He looks toward a window when it opens, and shrugs at "show desktop".
+  const prevActive = useRef(activeWindowId);
+  const prevVisible = useRef(0);
+  useEffect(() => {
+    const e = E.current;
+    const visible = Object.values(windows).filter((w) => w.isOpen && !w.isMinimized).length;
+    const opened = activeWindowId && activeWindowId !== prevActive.current;
+    const hidAll = prevVisible.current > 1 && visible === 0;
+    prevActive.current = activeWindowId;
+    prevVisible.current = visible;
+    if (e.mode !== 'stand' || moodRef.current || e.sleeping) return;
+    if (hidAll) {
+      setMood('shrug', animMs('shrug') + 400);
+      return;
+    }
+    if (opened && activeWindowId) {
+      const w = windows[activeWindowId];
+      const g = geo.current;
+      if (w) setMood(w.position.x + w.size.width / 2 < mx.get() + g.cx ? 'look-left' : 'look-right', 900);
+    }
+  }, [activeWindowId, animMs, mx, setMood, windows]);
 
   // Tip with a "swing": thwip across the floor, then wander back later.
   const wasSwinging = useRef(false);
@@ -684,6 +895,32 @@ export const PixelSpider: React.FC = () => {
         travelTo(clamp(rand(40, vw - geo.current.size - 40), 0, vw - geo.current.size), floorY, { kind: 'floor' }, { arc: 220 });
         break;
       }
+      case 'sit':
+        wake();
+        setMood('sit', 9000);
+        break;
+      case 'web': {
+        wake();
+        const pt = E.current.pointer;
+        const { vw } = metrics();
+        shootWebAt(pt ? pt.x : mx.get() < vw / 2 ? vw - 40 : 40, pt ? pt.y : my.get() - 120);
+        break;
+      }
+      case 'thumbs':
+        wake();
+        setMood('thumbs-up', animMs('thumbs-up') + 600);
+        break;
+      case 'laugh':
+        wake();
+        setMood('laugh', 2600);
+        break;
+      case 'trick': {
+        wake();
+        const t = pick<AnimName>(['kick', 'stretch', 'sneeze', 'shrug', 'thumbs-up', 'yawn']);
+        if (DIRECTIONAL_ANIMS.has(t)) setFlip(Math.random() < 0.5);
+        setMood(t, animMs(t) + 300);
+        break;
+      }
       case 'hide':
         updateSettings({ mascot: false });
         break;
@@ -691,7 +928,7 @@ export const PixelSpider: React.FC = () => {
         updateSettings({ mascot: true });
         break;
     }
-  }, [goHome, hop, mascot.command, metrics, pet, say, setMood, travelTo, updateSettings, wake]);
+  }, [animMs, goHome, hop, mascot.command, metrics, mx, my, pet, say, setMood, shootWebAt, travelTo, updateSettings, wake]);
 
   // Keep the bubble side in sync with where the spider ends up.
   useEffect(() => {
@@ -703,7 +940,7 @@ export const PixelSpider: React.FC = () => {
   if (!settings.mascot || (isMobile && anyWindowVisible)) return null;
 
   const contextAnim = mascot.frame !== 'idle' && mascot.frame !== 'swinging' ? MOOD_TO_ANIM[mascot.frame] : null;
-  const physical: Partial<Record<Mode, AnimName>> = { drag: 'dangle', fall: 'fall', land: 'land', hop: 'hop', walk: 'walk', travel: 'dangle' };
+  const physical: Partial<Record<Mode, AnimName>> = { drag: 'dangle', fall: 'fall', land: 'land', hop: 'hop', walk: running ? 'run' : 'walk', travel: travelAnim };
   const anim: AnimName =
     physical[mode] ??
     mood?.anim ??
@@ -722,6 +959,47 @@ export const PixelSpider: React.FC = () => {
   return (
     <>
       <style>{keyframes}</style>
+
+      {/* Web shot at the cursor */}
+      <AnimatePresence>
+        {webShot && (
+          <motion.svg
+            key={webShot.id}
+            aria-hidden="true"
+            className="fixed inset-0 w-screen h-screen pointer-events-none z-[748]"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <motion.line
+              x1={webShot.x1}
+              y1={webShot.y1}
+              x2={webShot.x2}
+              y2={webShot.y2}
+              stroke="rgb(var(--c-lavender))"
+              strokeWidth={2}
+              strokeDasharray="1 0"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+            />
+            <motion.g initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.16, duration: 0.15 }} style={{ originX: `${webShot.x2}px`, originY: `${webShot.y2}px` }}>
+              {[0, 45, 90, 135].map((deg) => (
+                <line
+                  key={deg}
+                  x1={webShot.x2 - 9 * Math.cos((deg * Math.PI) / 180)}
+                  y1={webShot.y2 - 9 * Math.sin((deg * Math.PI) / 180)}
+                  x2={webShot.x2 + 9 * Math.cos((deg * Math.PI) / 180)}
+                  y2={webShot.y2 + 9 * Math.sin((deg * Math.PI) / 180)}
+                  stroke="rgb(var(--c-lavender))"
+                  strokeWidth={1.5}
+                />
+              ))}
+              <circle cx={webShot.x2} cy={webShot.y2} r={5} fill="none" stroke="rgb(var(--c-lavender))" strokeWidth={1.5} />
+            </motion.g>
+          </motion.svg>
+        )}
+      </AnimatePresence>
 
       {/* Web line from the top of the screen while swinging */}
       {mode === 'travel' && (
@@ -786,6 +1064,14 @@ export const PixelSpider: React.FC = () => {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={() => (E.current.drag = null)}
+          onPointerEnter={(ev) => {
+            // Mouse hovers over him: a little reaction (not on touch, not while busy).
+            const e = E.current;
+            if (ev.pointerType === 'touch' || e.mode !== 'stand' || moodRef.current || e.sleeping || Date.now() < e.hoverCooldownUntil) return;
+            e.hoverCooldownUntil = Date.now() + 9000;
+            const a = pick<AnimName>(['thumbs-up', 'laugh', 'wave']);
+            setMood(a, a === 'thumbs-up' ? animMs(a) + 500 : 1800);
+          }}
           onKeyDown={(ev) => {
             if (ev.key === 'Enter' || ev.key === ' ') {
               ev.preventDefault();
@@ -806,7 +1092,7 @@ export const PixelSpider: React.FC = () => {
             anim={missing[anim] ? 'idle' : anim}
             meta={missing[anim] ? anims.idle : meta}
             size={size}
-            flip={mode === 'walk' && flip}
+            flip={DIRECTIONAL_ANIMS.has(anim) && flip}
             paused={reduceMotion}
             playId={oneShotKey}
             fallbackSrc={missing[anim] && missing.idle ? asset('/mascot/idle-01.png') : undefined}
@@ -834,7 +1120,7 @@ const SpiderMenu: React.FC<{
   x: number;
   y: number;
   onClose: () => void;
-  onPick: (cmd: 'pet' | 'dance' | 'nap' | 'hop' | 'wave' | 'home' | 'swing' | 'hide') => void;
+  onPick: (cmd: 'pet' | 'dance' | 'nap' | 'hop' | 'wave' | 'home' | 'swing' | 'hide' | 'sit' | 'web' | 'thumbs' | 'trick') => void;
 }> = ({ x, y, onClose, onPick }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -857,12 +1143,16 @@ const SpiderMenu: React.FC<{
     { cmd: 'hop', label: 'Jump', icon: 'restore' },
     { cmd: 'wave', label: 'Wave', icon: 'spider' },
     { cmd: 'swing', label: 'Web-swing', icon: 'link' },
+    { cmd: 'web', label: 'Shoot web', icon: 'send' },
+    { cmd: 'trick', label: 'Do a trick', icon: 'trophy' },
+    { cmd: 'thumbs', label: 'Thumbs up', icon: 'check' },
+    { cmd: 'sit', label: 'Sit down', icon: 'pin' },
     { cmd: 'nap', label: 'Nap', icon: 'clock' },
     { cmd: 'home', label: 'Go home', icon: 'desktop' },
     { cmd: 'hide', label: 'Hide Pixel Spider', icon: 'close' },
   ];
   const left = Math.min(x, (typeof window === 'undefined' ? 1280 : window.innerWidth) - 190);
-  const top = Math.min(y, (typeof window === 'undefined' ? 800 : window.innerHeight) - 290);
+  const top = Math.min(y, (typeof window === 'undefined' ? 800 : window.innerHeight) - 410);
 
   return (
     <div

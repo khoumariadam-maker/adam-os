@@ -182,6 +182,7 @@ const HELP: { group: HelpGroup; usage: string; desc: string }[] = [
   { group: 'Fun', usage: 'spidey', desc: 'Play the Pixel Spider 8-bit theme ♫' },
   { group: 'Fun', usage: 'spider', desc: 'Trigger a Pixel Spider web swing' },
   { group: 'Fun', usage: 'pet | dance | nap | jump', desc: 'Play with Pixel Spider' },
+  { group: 'Fun', usage: 'trick | web | sit', desc: 'More Pixel Spider tricks' },
   { group: 'Fun', usage: 'matrix', desc: 'Simulated hacker readout (alias: hack)' },
   { group: 'Fun', usage: 'sl', desc: 'ASCII steam locomotive (alias: train)' },
   { group: 'Fun', usage: 'ping', desc: 'Test Spidey-Sense latency' },
@@ -193,7 +194,7 @@ const HELP: { group: HelpGroup; usage: string; desc: string }[] = [
 const COMMAND_NAMES: string[] = [
   'help', 'about', 'bio', 'projects', 'skills', 'neofetch', 'apps', 'open', 'start', 'contact', 'email',
   'github', 'cv', 'resume', 'ls', 'cd', 'pwd', 'cat', 'tree', 'whoami', 'date', 'echo', 'history',
-  'wallpaper', 'reboot', 'clear', 'spidey', 'theme', 'spider', 'pet', 'dance', 'nap', 'jump', 'matrix', 'hack', 'sl', 'train', 'ping',
+  'wallpaper', 'reboot', 'clear', 'spidey', 'theme', 'spider', 'pet', 'dance', 'nap', 'jump', 'trick', 'web', 'sit', 'matrix', 'hack', 'sl', 'train', 'ping',
   'coffee', 'sudo', 'exit',
 ];
 
@@ -754,6 +755,18 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({ onTriggerTheater
       case 'jump':
         mascot.sendCommand('hop');
         return <p className="text-lavender">Boing!</p>;
+
+      case 'trick':
+        mascot.sendCommand('trick');
+        return <p className="text-lavender">Pixel Spider is showing off.</p>;
+
+      case 'web':
+        mascot.sendCommand('web');
+        return <p className="text-lavender">THWIP! (He aims at your cursor.)</p>;
+
+      case 'sit':
+        mascot.sendCommand('sit');
+        return <p className="text-lavender">Good spider. *sits*</p>;
 
       case 'spider':
         mascot.triggerRandomInteraction();

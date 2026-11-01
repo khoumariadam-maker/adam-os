@@ -38,3 +38,6 @@ Thumbs.db
 # playwright
 /test-results/
 /playwright-report/
+
+# python
+__pycache__/

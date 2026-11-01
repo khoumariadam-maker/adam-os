@@ -10,7 +10,9 @@ export const WALLPAPERS = ['night-city', 'cyber-forest', 'pixel-mountains', 'y2k
 export type WallpaperName = (typeof WALLPAPERS)[number];
 
 // Things other apps can ask the spider to *do* (not just look like).
-export type MascotCommand = 'pet' | 'dance' | 'nap' | 'hop' | 'wave' | 'home' | 'swing' | 'hide' | 'show';
+export type MascotCommand =
+  | 'pet' | 'dance' | 'nap' | 'hop' | 'wave' | 'home' | 'swing' | 'hide' | 'show'
+  | 'sit' | 'web' | 'thumbs' | 'laugh' | 'trick';
 
 interface MascotContextType {
   frame: SpiderFrame;

@@ -24,10 +24,15 @@ Method -- integer-only pixel operations, the art is never resampled:
     display size, with a 2px ink outline.
 Every strip is re-indexed to an exact palette (no quantisation, no dithering).
 
-All 19 animations use the idle character so the mascot never changes design
+v3 adds run, climb, sit, stretch, yawn, scratch, shoot-web, thumbs-up, laugh,
+shrug, kick and sneeze: bent two-segment arms with fist / open / thumb / palm /
+web-flick hands (draw_limb), an open-mouth shape, web threads and lines, and
+an exact three-shear (Paeth) rotation for the kicking leg.
+
+All 31 animations use the idle character so the mascot never changes design
 when the player swaps animations; the feet bottom row (y=236) and the body
 centre (x=127/128) are the same in every frame unless the motion is intended
-(dangle / surprised jump).
+(dangle / surprised jump / climb / sit / kick).
 
 Usage:  python3 scripts/mascot/build_frames_v2.py [--preview contact.png] [--gifs DIR]
 Deterministic; the source PNGs are never modified.
@@ -912,6 +917,499 @@ def anim_typing() -> Frames:
     return out
 
 
+# ===================================================== v3 additions (run .. sneeze) ===
+
+QMARK = [".xxx.", "xx.xx", "...xx", "..xx.", "..x..", ".....", "..x.."]
+HA = ["x.x..x.", "x.x.x.x", "xxx.xxx", "x.x.x.x", "x.x.x.x"]
+SPLAT = ["x.x.x", ".xxx.", "xxoxx", ".xxx.", "x.x.x"]
+DOT = ["x"]
+TONGUE = C("8c2f45")
+
+
+def ellipse(cx: float, cy: float, rx: float, ry: float) -> np.ndarray:
+    yy, xx = np.mgrid[0:SIZE, 0:SIZE]
+    return ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
+
+
+def rrect(x0: int, y0: int, x1: int, y1: int, r: int = 3) -> np.ndarray:
+    """Rounded rectangle [x0,x1) x [y0,y1)."""
+    m = np.zeros((SIZE, SIZE), bool)
+    m[y0:y1, x0 + r : x1 - r] = True
+    m[y0 + r : y1 - r, x0:x1] = True
+    for cx, cy in ((x0 + r, y0 + r), (x1 - r - 1, y0 + r), (x0 + r, y1 - r - 1), (x1 - r - 1, y1 - r - 1)):
+        m |= disc(cx, cy, r + 0.3)
+    return m
+
+
+def hand_shape(kind: str, hx: float, hy: float, side: int) -> Tuple[np.ndarray, np.ndarray]:
+    """(hand mask, ink detail mask) for a drawn hand centred at (hx, hy).
+    side = +1 for the screen-right arm, -1 for the screen-left arm."""
+    ix, iy = int(round(hx)), int(round(hy))
+    det = np.zeros((SIZE, SIZE), bool)
+    if kind == "fist":
+        m = rrect(ix - 9, iy - 8, ix + 9, iy + 9, 4)
+        for k in (-3, 2):  # two finger creases
+            det[iy + k : iy + k + 1, ix - 6 : ix + 6] = True
+    elif kind == "open":
+        m = disc(hx, hy, 10) | disc(hx - side * 11, hy + 3, 4.5)
+        for fx in (ix - 4, ix + 1, ix + 6):
+            det[iy - 9 : iy - 4, fx : fx + 1] = True
+    elif kind == "thumb":
+        m = rrect(ix - 9, iy - 6, ix + 9, iy + 10, 4)
+        m |= capsule((hx - side * 3, hy - 6), (hx - side * 3, hy - 17), 4)
+        for k in (-1, 3, 7):
+            det[iy + k : iy + k + 1, ix - 6 : ix + 4] = True
+    elif kind == "palm":  # open palm facing up, fingers pointing outward
+        m = ellipse(hx, hy, 14, 7) | disc(hx - side * 9, hy - 7, 4)
+        for k in (-2, 2):
+            x = ix + side * 7
+            det[iy + k : iy + k + 1, min(x, x + side * 6) : max(x, x + side * 6) + 1] = True
+    elif kind == "flick":  # web-shooter: index + pinky up, middle fingers folded
+        m = rrect(ix - 9, iy - 6, ix + 9, iy + 9, 4)
+        m |= capsule((hx - 6, hy - 4), (hx - 6, hy - 18), 3.5)
+        m |= capsule((hx + 6, hy - 4), (hx + 6, hy - 16), 3.5)
+        m |= capsule((hx - side * 12, hy + 2), (hx - side * 9, hy + 2), 3.5)
+        det[iy - 3 : iy - 2, ix - 3 : ix + 4] = True
+    elif kind == "mouth":  # back of the hand covering the mouth, fingers sideways
+        m = rrect(ix - 11, iy - 8, ix + 11, iy + 8, 5)
+        for k in (-3, 2):
+            x = ix - side * 3
+            det[iy + k : iy + k + 1, min(x, x - side * 7) : max(x, x - side * 7) + 1] = True
+    else:
+        raise ValueError(kind)
+    return m, det & m
+
+
+def draw_limb(a: RGBA, pts: Sequence[Tuple[float, float]], kind: str, side: int,
+              behind: np.ndarray | None = None, hand_front: bool = True, r: float = 10.0) -> RGBA:
+    """Hoodie arm along the polyline pts (shoulder [, elbow], hand centre) with
+    a drawn hand; crisp binary masks, 2px ink outline, sprite palette. Pixels
+    in `behind` are left alone (the arm passes behind them) except the hand
+    when hand_front is set."""
+    out = a.copy()
+    hx, hy = pts[-1]
+    px, py = pts[-2]
+    L = math.hypot(hx - px, hy - py)
+    ux, uy = (hx - px) / L, (hy - py) / L
+    wrist = (hx - ux * 12, hy - uy * 12)
+    hand_m, det = hand_shape(kind, hx, hy, side)
+    sleeve = np.zeros((SIZE, SIZE), bool)
+    seg = list(pts[:-1]) + [wrist]
+    for p0, p1 in zip(seg, seg[1:]):
+        sleeve |= capsule(p0, p1, r)
+    sleeve &= ~hand_m
+    cuff = capsule((wrist[0] - ux * 5, wrist[1] - uy * 5), wrist, r) & sleeve
+    shape = sleeve | hand_m
+    ol = outline_of(shape, 2)
+    shade_s = sleeve & ~(mshift(sleeve, -3 * side, 0) & mshift(sleeve, 0, -3))
+    shade_h = hand_m & ~mshift(hand_m, -3 * side, -3)
+    seam = outline_of(hand_m, 1) & sleeve
+    layers = [(ol, INK), (sleeve, HOOD), (shade_s, HOOD2), (cuff, HOOD2), (hand_m, SKIN),
+              (shade_h, SKIND), (det, INK), (seam, INK)]
+    free = np.ones((SIZE, SIZE), bool) if behind is None else ~behind
+    if hand_front:
+        free = free | mgrow(hand_m, 2)
+    for m, c in layers:
+        out[m & free] = c
+    return out
+
+
+def opaque(a: RGBA) -> np.ndarray:
+    return a[:, :, 3] == 255
+
+
+def mouth(a: RGBA, w: int, h: int, cx: int = 134, cy: int = 137) -> RGBA:
+    """Open mouth: dark oval with a skin lip rim and a tongue (w,h = inner size)."""
+    if w <= 0 or h <= 0:
+        return a
+    out = a.copy()
+    inner = ellipse(cx, cy, w / 2, h / 2)
+    lip = mgrow(inner, 2) & ~inner
+    out[lip] = SKIND
+    out[inner] = INK
+    if h >= 6:
+        out[inner & ellipse(cx, cy + h / 2, w / 3, h / 3)] = TONGUE
+    return out
+
+
+def vline(a: RGBA, x: int, y0: int, y1: int, behind: np.ndarray | None = None, w: int = 2) -> RGBA:
+    """Thin lavender/white web thread (no outline, like dangle)."""
+    out = a.copy()
+    m = np.zeros((SIZE, SIZE), bool)
+    m[max(0, y0) : y1, x : x + w] = True
+    if behind is not None:
+        m &= ~behind
+    out[m] = LAV
+    m2 = m.copy()
+    m2[:, x + 1 :] = False
+    out[m2] = WHITE
+    return out
+
+
+def web_line(a: RGBA, x0: int, x1: int, y: int) -> RGBA:
+    """Horizontal web shot: 2px white over 2px lavender, 2px ink outline."""
+    out = a.copy()
+    m = np.zeros((SIZE, SIZE), bool)
+    m[y : y + 4, x0:x1] = True
+    out[outline_of(m, 2) & ~opaque(a)] = INK
+    out[m] = LAV
+    out[y : y + 2, x0:x1] = WHITE
+    return out
+
+
+def paeth_rotate(sub: RGBA, theta: float, px: float, py: float) -> RGBA:
+    """Exact pixel rotation by three integer shears (no resampling: every
+    source pixel lands on exactly one destination pixel)."""
+    a = np.tan(-theta / 2)
+    b = np.sin(theta)
+    out = sub
+
+    def xshear(img: RGBA) -> RGBA:
+        o = np.zeros_like(img)
+        for y in range(img.shape[0]):
+            d = int(round(a * (y - py)))
+            o[y] = np.roll(img[y], d, axis=0)
+        return o
+
+    def yshear(img: RGBA) -> RGBA:
+        o = np.zeros_like(img)
+        for x in range(img.shape[1]):
+            d = int(round(b * (x - px)))
+            o[:, x] = np.roll(img[:, x], d, axis=0)
+        return o
+
+    return xshear(yshear(xshear(out)))
+
+
+def bounce_f(a: RGBA, b: int) -> RGBA:
+    """b>0: squash the torso b rows (lower), b<0: stretch it (higher)."""
+    if b > 0:
+        return squash(a, pick_rows(150, 205, b))
+    if b < 0:
+        return stretch(a, pick_rows(150, 205, -b))
+    return a
+
+
+def head_tilt(a: RGBA, dx: int) -> RGBA:
+    """Shift the head (+ hair) dx px relative to the body, ramped at the neck."""
+    def offs(y: int) -> int:
+        if y < 138:
+            return dx
+        if y < 150:
+            return round(dx * (150 - y) / 12)
+        return 0
+    return shear(a, offs, 0, 150)
+
+
+def lift_leg2(a: RGBA, side: str, h: int) -> RGBA:
+    """Raise one foot by up to ~14px (rows deleted over the whole shin)."""
+    if h <= 0:
+        return a
+    x0, x1 = (90, 128) if side == "L" else (128, 166)
+    rows = pick_rows(215, 233, min(h, 17))
+    return lift(a, rows, x0, x1)
+
+
+SH_R = (CX + 38, 167)
+SH_L = (CX - 38, 167)
+
+
+def anim_run() -> Frames:
+    # (lifted leg, lift px, bob (+down), weight shift dx, rock, arm swing s: +1 = screen-right arm up)
+    seq = [
+        (None, 0, 4, 0, 0, 0),
+        ("L", 7, 1, 2, 2, 1),
+        ("L", 12, -2, 3, 3, 1),
+        ("L", 6, 1, 2, 2, 0),
+        (None, 0, 4, 0, 0, 0),
+        ("R", 7, 1, -1, -2, -1),
+        ("R", 12, -2, -1, -3, -1),
+        ("R", 6, 1, -1, -2, 0),
+    ]
+    body = hide_hands(BASE, True, True)
+    out = []
+    for i, (leg, h, bob, shift, rk, s) in enumerate(seq):
+        f = body
+        # pumping arms (bent, fists): s=+1 right arm forward/up, left arm back/down
+        up_r = [SH_R, (CX + 56, 186), (CX + 62, 160)]
+        dn_r = [SH_R, (CX + 50, 190), (CX + 58, 212)]
+        mid_r = [SH_R, (CX + 54, 190), (CX + 66, 198)]
+        up_l = [SH_L, (CX - 56, 186), (CX - 62, 160)]
+        dn_l = [SH_L, (CX - 50, 190), (CX - 58, 212)]
+        mid_l = [SH_L, (CX - 54, 190), (CX - 66, 198)]
+        pr = up_r if s > 0 else dn_r if s < 0 else mid_r
+        pl = dn_l if s > 0 else up_l if s < 0 else mid_l
+        body_m = opaque(BASE)
+        # the arm swinging back goes behind the body
+        f = draw_limb(f, pl, "fist", -1, behind=body_m if s > 0 else None, hand_front=False)
+        f = draw_limb(f, pr, "fist", 1, behind=body_m if s < 0 else None, hand_front=False)
+        f = bounce_f(f, bob)
+        if rk:
+            f = rock(f, rk)
+        f = shear(f, lambda y, d=shift: d if y < 206 else 0, 0, 206)
+        f = lean(f, 12, pivot=206)
+        if leg:
+            f = lift_leg2(f, leg, h)
+            f = lift_leg(f, leg, 0, fwd=4 if h >= 10 else 2)
+        # dust puff behind (left) on the contact frames, drifting away
+        occ = opaque(f)
+        if i in (0, 4):
+            f = stamp_c(f, PUFF, CX - 52, 228, {"x": LAV}, behind=occ)
+        elif i in (1, 5):
+            f = stamp_c(f, PUFF_S, CX - 70, 222, {"x": WHITE}, behind=occ)
+        out.append(f)
+    return out
+
+
+def anim_climb() -> Frames:
+    # (left hand y, right hand y, body dy (down), tucked leg, tuck px)
+    seq = [(6, 34, 16, "L", 9), (18, 20, 12, None, 0), (34, 6, 16, "R", 9), (20, 18, 12, None, 0)]
+    out = []
+    tx = CX + 1
+    for lh, rh, dy, leg, tuck in seq:
+        f = hide_hands(paint_eyes(BASE, mshift(EYES, 0, -3)), True, True)
+        if leg:
+            f = lift_leg2(f, leg, tuck)
+        f = translate(f, 0, dy)
+        head = np.zeros((SIZE, SIZE), bool)
+        head[: 150 + dy] = opaque(f)[: 150 + dy]
+        f = vline(f, tx - 1, 0, 60, behind=None)
+        sh_y = 167 + dy
+        el, er = sh_y - 70 - (lh - 6) // 2, sh_y - 70 - (rh - 6) // 2
+        f = draw_limb(f, [(CX - 36, sh_y), (CX - 76, el), (tx - 1, lh + 10)], "fist", -1, behind=head)
+        f = draw_limb(f, [(CX + 36, sh_y), (CX + 76, er), (tx + 1, rh + 10)], "fist", 1, behind=head)
+        # thread visible again across the fists' gap (it runs through the hands)
+        top = min(lh, rh) + 10
+        f = vline(f, tx - 1, 0, top - 8)
+        out.append(f)
+    return out
+
+
+def anim_sit() -> Frames:
+    a = BASE
+    # legs: squash the leg region (rows 206..236) by ~40% and splay them apart
+    legs_rows = pick_rows(207, 234, 12)
+    f = lift(a, legs_rows, 0, SIZE)  # feet rise to the hips
+    f = widen(f, [118, 117, 116, 115, 114, 113, 112, 139, 140, 141, 142, 143, 144, 145], 210, SIZE)
+    f = widen(f, [104, 152], 196, 210)  # hoodie hem bunches out a little when seated
+    # lower the whole figure so the seat (crotch / hoodie hem, y~212) sits at y~236
+    f = translate(f, 0, 236 - 212)
+    out = []
+    br = [0, 1, 2, 1]
+    swing_ = [(1, -1), (0, 0), (-1, 1), (0, 0)]
+    for i in range(4):
+        g = breathe(f, br[i])
+        sl, sr = swing_[i]
+        # legs splayed outward below the seat, feet dangling: the swinging
+        # foot shifts 1px sideways and rises 2px (it comes forward)
+        g = g.copy()
+        for side, d in (("L", sl), ("R", sr)):
+            x0, x1 = (30, CX) if side == "L" else (CX, 226)
+            sgn = -1 if side == "L" else 1
+            for y in range(236, SIZE):
+                k = sgn * ((y - 236) // 2) + (d if y >= 242 else 0)
+                if k:
+                    g[y, x0:x1] = np.roll(g[y, x0:x1], k, axis=0)
+            if d > 0:
+                g = lift(g, [244, 246], x0, x1)
+        out.append(g)
+    return out
+
+
+def big_arms(a: RGBA, spread: int, hy: int, dy: int = 0, kind: str = "open") -> RGBA:
+    """Both arms raised high, hands at (CX +- spread, hy); arms pass behind the head."""
+    head = np.zeros((SIZE, SIZE), bool)
+    head[:150] = opaque(a)[:150]
+    sy = 167 + dy
+    for side in (1, -1):
+        sh = (CX + side * 38, sy)
+        hand = (CX + side * spread, hy)
+        elbow = ((sh[0] + hand[0]) / 2 + side * 12, (sh[1] + hand[1]) / 2)
+        a = draw_limb(a, [sh, elbow, hand], kind, side, behind=head)
+    return a
+
+
+def anim_stretch() -> Frames:
+    base = hide_hands(BASE, True, True)
+    happy = paint_eyes(base, eye_arch(EYE_L, 7) | eye_arch(EYE_R, 7))
+    sq = eye_cut(EYE_L, 0.4, 0.0) | eye_cut(EYE_R, 0.4, 0.0)
+    half = paint_eyes(base, sq)
+    f0 = body_squash(BASE, 3)
+    f1 = draw_limb(draw_limb(body_stretch(half, 2), [SH_R, (CX + 62, 160), (CX + 70, 128)], "open", 1),
+                   [SH_L, (CX - 62, 160), (CX - 70, 128)], "open", -1)
+    s2 = body_stretch(happy, 5)
+    f2 = big_arms(s2, 78, 30, dy=-4)
+    s3 = body_stretch(happy, 8)
+    f3 = big_arms(s3, 70, 14, dy=-6)
+    s4 = body_stretch(half, 3)
+    f4 = draw_limb(draw_limb(s4, [SH_R, (CX + 60, 182), (CX + 64, 204)], "fist", 1),
+                   [SH_L, (CX - 60, 182), (CX - 64, 204)], "fist", -1)
+    return [f0, f1, f2, f3, f4, BASE]
+
+
+def anim_yawn() -> Frames:
+    def eyes(frac: float) -> np.ndarray:
+        return eye_cut(EYE_L, frac, 0.0) | eye_cut(EYE_R, frac, 0.0)
+    body = hide_hands(BASE, True, False)
+    arm = [SH_R, (CX + 52, 182), (CX + 20, 140)]
+    f0 = mouth(paint_eyes(BASE, eyes(0.3)), 6, 4)
+    f1 = mouth(body_stretch(paint_eyes(BASE, eyes(0.55)), 2), 12, 9, cy=135)
+    f2 = mouth(body_stretch(paint_eyes(body, eyes(0.75)), 3), 14, 11, cy=134)
+    f2 = draw_limb(f2, [SH_R, (CX + 52, 180), (CX + 26, 138)], "mouth", 1)
+    f3 = mouth(body_stretch(paint_eyes(body, eyes(0.6)), 1), 8, 5, cy=136)
+    f3 = draw_limb(f3, arm, "mouth", 1)
+    f3 = stamp_c(f3, PUFF_S, 196, 92, {"x": LAV})
+    return [f0, f1, f2, f3, BASE]
+
+
+def anim_scratch() -> Frames:
+    body = hide_hands(paint_eyes(BASE, eye_cut(EYE_L, 0.2, 0.15) | mshift(EYE_R, 0, -2)), True, False)
+    out = []
+    for i in range(4):
+        hy = 54 if i % 2 == 0 else 50
+        f = head_tilt(body, -2)
+        head = np.zeros((SIZE, SIZE), bool)
+        head[:150] = opaque(f)[:150]
+        f = draw_limb(f, [SH_R, (CX + 82, 120), (CX + 60, hy)], "open", 1, behind=head)
+        if i % 2 == 0:
+            f = stamp_c(f, QMARK, 62, 18 - (i // 2) * 2, {"x": YELLOW})
+        out.append(f)
+    return out
+
+
+def anim_shoot_web() -> Frames:
+    eyes = mshift(EYES, 4, 0)
+    body = hide_hands(paint_eyes(BASE, eyes), True, False)
+    body = head_tilt(body, 3)
+    hy = 160
+    out = []
+    # f0: arm on its way out (bent), f1: straight + wrist flick, f2-4: web grows, f5: idle
+    f0 = draw_limb(lean(body, 2, pivot=206), [SH_R, (CX + 52, 184), (CX + 66, 170)], "fist", 1)
+    out.append(f0)
+    arm = lambda f: draw_limb(f, [SH_R, (CX + 46, hy + 3), (CX + 70, hy)], "flick", 1)
+    base1 = arm(lean(body, 3, pivot=206))
+    out.append(base1)
+    hand_x = CX + 80
+    for k, x1 in enumerate([CX + 98, CX + 116, SIZE]):
+        f = web_line(base1, hand_x, x1, hy - 2)
+        if k == 2:
+            f = stamp_c(f, SPLAT, 238, hy, {"x": WHITE, "o": LAV})
+        else:
+            f = stamp_c(f, STAR_S, x1, hy, {"x": WHITE})
+        out.append(f)
+    out.append(BASE)
+    return out
+
+
+def anim_thumbs_up() -> Frames:
+    body = hide_hands(BASE, True, False)
+    wink = paint_eyes(body, EYE_L | eye_arch(EYE_R, 7))
+    f0 = draw_limb(body, [SH_R, (CX + 56, 188), (CX + 62, 194)], "fist", 1)
+    f1 = draw_limb(body_squash(body, 1), [SH_R, (CX + 62, 186), (CX + 70, 160)], "fist", 1)
+    up = [SH_R, (CX + 66, 184), (CX + 72, 128)]
+    f2 = draw_limb(body_stretch(wink, 1), up, "thumb", 1)
+    f3 = stamp_c(f2, SPARK, CX + 92, 98, {"x": YELLOW, "o": WHITE})
+    return [f0, f1, f2, f3]
+
+
+def anim_laugh() -> Frames:
+    happy = paint_eyes(BASE, eye_arch(EYE_L, 7) | eye_arch(EYE_R, 7))
+    bounce = [3, 0, 3, 0]
+    tilt = [-1, 1, 1, -1]
+    out = []
+    for i in range(4):
+        f = mouth(happy, 12 if i % 2 == 0 else 10, 7 if i % 2 == 0 else 5)
+        f = bounce_f(f, bounce[i])
+        f = lean(f, tilt[i] * 2)
+        left = i < 2
+        y = 52 - (i % 2) * 8
+        f = stamp_c(f, HA, 34 if left else 222, y, {"x": YELLOW if left else WHITE})
+        out.append(f)
+    return out
+
+
+def anim_shrug() -> Frames:
+    body = hide_hands(BASE, True, True)
+    sq = eye_cut(EYE_L, 0.3, -0.12) | eye_cut(EYE_R, 0.3, 0.12)
+    body_sq = paint_eyes(body, sq)
+
+    def arms(f: RGBA, t: float, kind: str) -> RGBA:
+        for side in (1, -1):
+            elbow = (CX + side * (52 + 6 * t), 184 + 2 * t)
+            hand = (CX + side * (60 + 22 * t), 190 - 30 * t)
+            f = draw_limb(f, [(CX + side * 38, 167), elbow, hand], kind, side)
+        return f
+
+    f0 = arms(body, 0.2, "fist")
+    f1 = arms(head_tilt(body_sq, 1), 0.6, "palm")
+    # shoulders up: the head sinks 3px into the hood
+    sunk = squash(body_sq, pick_rows(140, 156, 3))
+    f2 = arms(head_tilt(sunk, 3), 1.0, "palm")
+    f3 = arms(head_tilt(squash(body_sq, pick_rows(140, 156, 2)), 3), 1.0, "palm")
+    return [f0, f1, f2, f3]
+
+
+def kick_leg(a: RGBA, deg: float, ext: int = 0) -> RGBA:
+    """Swing the right leg (screen-right) out about the hip by `deg` (exact
+    three-shear rotation, no resampling); `ext` rows are duplicated in the
+    shin first so the extended leg reaches further. The hip stub and the
+    hoodie hem stay in front."""
+    x0, x1, y0 = CX + 1, 176, 207
+    leg = a.copy()
+    if ext:
+        leg = stretch(leg, pick_rows(216, 230, ext), x0, x1)
+        leg = translate(leg, 0, ext)  # stretch grew it upward; push it back down
+    sub = np.zeros_like(a)
+    sub[y0:, x0:x1] = leg[y0:, x0:x1]
+    rest = a.copy()
+    rest[y0 + 6 :, x0:x1] = 0
+    rot = paeth_rotate(sub, -math.radians(deg), 148, y0)
+    out = rest.copy()
+    m = opaque(rot) & ~opaque(rest)
+    out[m] = rot[m]
+    return out
+
+
+def foot_tip(a: RGBA) -> Tuple[int, int]:
+    m = opaque(a)
+    m[:196] = False
+    m[:, :CX] = False
+    ys, xs = np.where(m)
+    k = int(np.argmax(xs))
+    return int(xs[k]), int(ys[k])
+
+
+def anim_kick() -> Frames:
+    det = paint_eyes(BASE, eye_cut(EYE_L, 0.35, 0.2) | eye_cut(EYE_R, 0.35, -0.2))
+    f0 = lean(lift_leg2(body_squash(det, 2), "R", 6), -3, pivot=206)
+    f1 = lean(kick_leg(det, 30, 4), -5, pivot=206)
+    f2 = lean(kick_leg(det, 72, 10), -8, pivot=206)
+    tx, ty = foot_tip(f2)
+    f2 = stamp_c(f2, STAR, tx + 14, ty - 4, {"x": YELLOW, "o": WHITE})
+    f2 = stamp_c(f2, STAR_S, tx + 30, ty - 22, {"x": WHITE})
+    f3 = lean(kick_leg(BASE, 24, 2), -2, pivot=206)
+    return [f0, f1, f2, f3, BASE]
+
+
+def anim_sneeze() -> Frames:
+    sq1 = eye_cut(EYE_L, 0.45, 0.0) | eye_cut(EYE_R, 0.45, 0.0)
+    shut = eyes_closed(4)
+    f0 = lean(body_stretch(paint_eyes(BASE, sq1), 1), -4)
+    f1 = mouth(lean(body_stretch(paint_eyes(BASE, shut), 3), -8), 6, 4, cy=136)
+    burst = lean(body_squash(paint_eyes(BASE, shut), 4), 10)
+    spray = [(198, 130, PUFF), (226, 112, PUFF_S), (232, 146, PUFF_S), (246, 128, DOT)]
+    f2 = burst
+    for x, y, p in spray:
+        f2 = stamp_c(f2, p, x, y, {"x": WHITE})
+    f2 = stamp_c(f2, BANG, 212, 56, {"x": YELLOW})
+    f3 = lean(body_squash(paint_eyes(BASE, eyes_closed(5)), 2), 5)
+    for x, y, p in [(234, 116, PUFF_S), (242, 144, PUFF_S)]:
+        f3 = stamp_c(f3, p, x, y, {"x": LAV})
+    f3 = stamp_c(f3, BANG, 214, 50, {"x": YELLOW})
+    f4 = lean(paint_eyes(BASE, sq1), 1)
+    return [f0, f1, f2, f3, f4, BASE]
+
+
 ANIMS: Dict[str, Tuple[Callable[[], Frames], int, bool]] = {
     "idle": (anim_idle, 4, True),
     "blink": (anim_blink, 1, False),
@@ -932,6 +1430,18 @@ ANIMS: Dict[str, Tuple[Callable[[], Frames], int, bool]] = {
     "land": (anim_land, 14, False),
     "celebrate": (anim_celebrate, 8, True),
     "loading": (anim_loading, 8, True),
+    "run": (anim_run, 14, True),
+    "climb": (anim_climb, 8, True),
+    "sit": (anim_sit, 3, True),
+    "stretch": (anim_stretch, 8, False),
+    "yawn": (anim_yawn, 6, False),
+    "scratch": (anim_scratch, 8, True),
+    "shoot-web": (anim_shoot_web, 14, False),
+    "thumbs-up": (anim_thumbs_up, 10, False),
+    "laugh": (anim_laugh, 10, True),
+    "shrug": (anim_shrug, 10, False),
+    "kick": (anim_kick, 14, False),
+    "sneeze": (anim_sneeze, 12, False),
 }
 
 
