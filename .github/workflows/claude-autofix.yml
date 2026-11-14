@@ -1,0 +1,84 @@
+name: Claude auto-fix after Codex review
+
+# Closes the loop automatically: Codex posts a review on an agent PR → Claude reads it,
+# fixes P0/P1 findings on the same branch, and pushes → Codex reviews again.
+# Safety:
+#   - OFF until you set repo variable AUTO_FIX_ENABLED=true (Settings → Secrets and variables → Actions → Variables)
+#   - only on branches named agent/*
+#   - stops after MAX_ROUNDS Codex reviews and labels the PR `needs-human`
+#   - never merges (AGENTS.md forbids it; the job has no merge step)
+on:
+  pull_request_review:
+    types: [submitted]
+
+env:
+  # Codex's GitHub bot login. If your reviews come from a different account, set repo variable CODEX_BOT_LOGIN.
+  CODEX_BOT: ${{ vars.CODEX_BOT_LOGIN || 'chatgpt-codex-connector[bot]' }}
+  MAX_ROUNDS: ${{ vars.AUTO_FIX_MAX_ROUNDS || '3' }}
+
+jobs:
+  autofix:
+    if: |
+      vars.AUTO_FIX_ENABLED == 'true' &&
+      startsWith(github.event.pull_request.head.ref, 'agent/') &&
+      github.event.review.user.login == (vars.CODEX_BOT_LOGIN || 'chatgpt-codex-connector[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: autofix-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Count review rounds
+        id: rounds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          n=$(gh api "repos/${{ github.repository }}/pulls/$PR/reviews" --paginate \
+                --jq "[.[] | select(.user.login == \"$CODEX_BOT\")] | length")
+          echo "Codex reviews so far: $n (max $MAX_ROUNDS)"
+          if [ "$n" -gt "$MAX_ROUNDS" ]; then
+            gh pr edit "$PR" -R "${{ github.repository }}" --add-label needs-human --remove-label needs-fix || true
+            gh pr comment "$PR" -R "${{ github.repository }}" --body "Auto-fix stopped after $MAX_ROUNDS rounds. Owner: please take a look (label \`needs-human\`)."
+            echo "stop=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stop=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.rounds.outputs.stop == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - if: steps.rounds.outputs.stop == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_bots: ${{ env.CODEX_BOT }}
+          claude_args: |
+            --max-turns 40
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR: #${{ github.event.pull_request.number }} (branch ${{ github.event.pull_request.head.ref }})
+            Codex just submitted review ${{ github.event.review.id }} on this PR.
+
+            You are the Implementer. Follow AGENTS.md → "Fixing review findings" exactly.
+            1. Read the linked issue, the PR description, this review and all its inline comments,
+               plus any unresolved comments from the owner.
+            2. If the review has NO P0 or P1 findings: do not change code. If CI is green, mark the PR
+               ready for review (`gh pr ready`), set label `ready-for-approval` (remove `needs-review`/`needs-fix`),
+               comment "Review clean — ready for owner approval." and stop.
+            3. Otherwise fix every valid P0/P1 finding in new commits on THIS branch (no force-push).
+               Fix P2s only if trivial. If you disagree with a finding, reply to that comment with your reasoning.
+            4. Run the commands from AGENTS.md → Commands and report actual results.
+            5. Push, then comment on the PR: finding → what you did, and append a line to "Review round log".
+            6. Labels: remove `needs-fix`, add `needs-review`. Then comment `@codex review` so Codex re-reviews.
+            Never merge, never touch main, never edit .github/workflows.

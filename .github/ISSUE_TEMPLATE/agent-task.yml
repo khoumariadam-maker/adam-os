@@ -1,0 +1,44 @@
+name: Agent task
+description: A task an AI agent can implement. Add the `agent-ready` label only once it's clear.
+title: "[Task] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write this so someone with zero context could build it. Agents will NOT guess —
+        vague issues get labelled `blocked` with questions.
+        When it's ready, add the **agent-ready** label.
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement ID
+      description: Which feature in docs/REQUIREMENTS.md this implements (e.g. F-03). Leave blank if none.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should exist when this is done, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist the reviewer will verify one by one.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ] Tests cover the new behavior
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Out of scope
+      description: What NOT to touch or build in this task.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes, links, screenshots
+      description: Designs, API docs, example data, files to look at.
