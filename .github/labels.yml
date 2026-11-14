@@ -1,0 +1,31 @@
+# Synced to GitHub by .github/workflows/labels.yml. Edit here, not in the GitHub UI.
+- name: agent-ready
+  color: "0E8A16"
+  description: Approved and clear — an agent may pick this up
+- name: in-progress
+  color: "FBCA04"
+  description: An agent is working on it
+- name: needs-review
+  color: "1D76DB"
+  description: PR open, waiting for Codex review
+- name: needs-fix
+  color: "D93F0B"
+  description: Review found problems to fix
+- name: ready-for-approval
+  color: "5319E7"
+  description: Review clean + CI green — owner should merge or comment
+- name: blocked
+  color: "B60205"
+  description: Needs an answer from the owner
+- name: needs-human
+  color: "000000"
+  description: Auto-fix loop hit its limit — owner must step in
+- name: priority:high
+  color: "E99695"
+  description: Do this first
+- name: priority:low
+  color: "C5DEF5"
+  description: Do this when nothing else is waiting
+- name: bug
+  color: "D73A4A"
+  description: Something is broken

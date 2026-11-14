@@ -1,0 +1,7 @@
+# The owner must approve every change (enforced once branch protection is on).
+* @khoumariadam-maker
+
+# Agent rules and automation are owner-only territory.
+/AGENTS.md          @khoumariadam-maker
+/CLAUDE.md          @khoumariadam-maker
+/.github/           @khoumariadam-maker

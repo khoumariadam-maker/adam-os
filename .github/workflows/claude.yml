@@ -1,0 +1,45 @@
+name: Claude (@claude mentions)
+
+# Lets the OWNER summon Claude from any issue or PR comment, e.g.
+#   "@claude fix the P1 findings from the last review"
+#   "@claude implement this issue"
+# Setup (once per repo): see README → "Enable the GitHub Action".
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  claude:
+    # Only the repo owner can trigger it — strangers can't burn your quota.
+    if: |
+      github.actor == github.repository_owner && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # Use ONE of these two secrets:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Pro/Max subscription (run `claude setup-token`)
+          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}             # pay-per-use API key
+          claude_args: |
+            --max-turns 40

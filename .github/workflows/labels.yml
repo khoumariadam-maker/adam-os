@@ -1,0 +1,36 @@
+name: Sync labels
+
+# Labels are NOT copied when you create a repo from a template.
+# This creates/updates them from .github/labels.yml. Run it once by hand after creating a project
+# (Actions → Sync labels → Run workflow); it also re-runs weekly and whenever labels.yml changes.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/labels.yml"]
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or update labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, yaml
+          labels = yaml.safe_load(open(".github/labels.yml"))
+          for l in labels:
+              subprocess.run(
+                  ["gh", "label", "create", l["name"], "--color", l["color"],
+                   "--description", l.get("description", ""), "--force"],
+                  check=True)
+              print("ok:", l["name"])
+          PY
